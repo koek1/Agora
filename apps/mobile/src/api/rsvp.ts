@@ -38,9 +38,13 @@ export async function createRsvp(eventId: string): Promise<RsvpResponse> {
     return apiClient.post<RsvpResponse, { eventId: string }>('/rsvp', { eventId });
 }
 
-// GET /rsvp/my - al die gebruiker se RSVP's
-export async function getMyRsvps(): Promise<RsvpWithEvent[]> {
-    return apiClient.get<RsvpWithEvent[]>('/rsvp/my');
+// GET /rsvp/my - al die gebruiker se RSVP's, opsioneel gefiltreer op datumreeks
+export async function getMyRsvps(dateFrom?: string, dateTo?: string): Promise<RsvpWithEvent[]> {
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo) params.set('dateTo', dateTo);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiClient.get<RsvpWithEvent[]>(`/rsvp/my${query}`);
 }
 
 // DELETE /rsvp/:id - status -> GEKANSELLEER -> 204

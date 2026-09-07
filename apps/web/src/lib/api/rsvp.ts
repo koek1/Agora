@@ -72,10 +72,14 @@ export async function createRsvp(eventId: string): Promise<RsvpResponse> {
 }
 
 // GET /api/v1/rsvp/my — die ingelogde gebruiker se eie RSVPs, met die geleentheid gepopuleer
-export async function getMyRsvps(): Promise<MyRsvp[]> {
+export async function getMyRsvps(dateFrom?: string, dateTo?: string): Promise<MyRsvp[]> {
     const token = getToken();
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('dateFrom', dateFrom);
+    if (dateTo)   params.set('dateTo', dateTo);
+    const query = params.toString() ? `?${params.toString()}` : '';
 
-    const res = await fetch(`${BASE_URL}/api/v1/rsvp/my`, {
+    const res = await fetch(`${BASE_URL}/api/v1/rsvp/my${query}`, {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         cache:   'no-store',
     });
