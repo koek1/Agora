@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
@@ -99,8 +99,16 @@ export default function EventsPage() {
     // 'n Gekose datumreeks vervang daardie verstek-venster heeltemal (dit gaan as
     // from/to na die backend toe), sodat die gebruiker ook verder terug in die
     // verlede of verder in die toekoms as die verstek kan kyk.
+    //
+    // eventsRequestId hou die volgorde van versoeke dop: is 'n stadiger, ouer
+    // versoek se antwoord laaster terug as 'n vinniger, latere een (bv. die
+    // gebruiker klik gou-gou twee dae), moet dit nie die nuwer resultate
+    // oorskryf nie.
+    const eventsRequestId = useRef(0);
+
     const loadEvents = useCallback(async (showLoading = false) => {
         if (showLoading) setLoading(true);
+        const requestId = ++eventsRequestId.current;
 
         try {
             const now = new Date();
@@ -110,10 +118,8 @@ export default function EventsPage() {
             // laaste dag. Is net een dag gekies, is daardie dag self albei grense.
             const filters = toIsoRange(dateFrom, dateTo) ?? { to: endOfNextMonth.toISOString() };
 
-            const [eventsResult, rsvpsResult] = await Promise.all([
-                listEventsAction(filters),
-                getMyRsvpsAction(),
-            ]);
+            const eventsResult = await listEventsAction(filters);
+            if (requestId !== eventsRequestId.current) return; // 'n latere versoek het reeds gewen
 
             if (eventsResult.error) {
                 if (showLoading) setLoadError(eventsResult.error);
@@ -121,40 +127,54 @@ export default function EventsPage() {
                 setLoadError(null);
                 setEvents(eventsResult.events ?? []);
             }
+        } catch {
+            if (requestId === eventsRequestId.current && showLoading) {
+                setLoadError('Kon nie geleenthede laai nie.');
+            }
+        } finally {
+            if (requestId === eventsRequestId.current) setLoading(false);
+        }
+    }, [dateFrom, dateTo]);
 
+    // RSVP-status is los van die datumfilter, dus moenie herlaai net omdat die
+    // gebruiker die datumreeks verander nie.
+    const loadRsvps = useCallback(async () => {
+        try {
+            const rsvpsResult = await getMyRsvpsAction();
             const activeEventIds = (rsvpsResult.rsvps ?? [])
                 .filter((r) => r.status !== 'GEKANSELLEER' && r.event)
                 .map((r) => r.event!._id);
             setRsvpdEventIds(new Set(activeEventIds));
-            
         } catch {
-            if (showLoading) setLoadError('Kon nie geleenthede laai nie.');
-
-        } finally {
-            setLoading(false);
+            // Stilweg misluk -- die RSVP-kolletjie op elke kaart is 'n bykomstigheid,
+            // nie krities vir die geleentheidslys self nie.
         }
-    }, [dateFrom, dateTo]);
+    }, []);
 
+    // Herlaai die geleenthede sodra die datumfilter verander (of by die eerste laai).
     useEffect(() => {
-     let active = true;
+        loadEvents(true);
+    }, [loadEvents]);
 
-        const initialLoad = async () => {
-         if (!active) return;
-         await loadEvents(true);
-     };
+    // 'n Ref sodat die 60s-opname hieronder altyd die jongste datumfilter
+    // gebruik, sonder dat 'n filterklik die opname self herbegin.
+    const loadEventsRef = useRef(loadEvents);
+    useEffect(() => {
+        loadEventsRef.current = loadEvents;
+    }, [loadEvents]);
 
-    initialLoad();
+    // Onafhanklike opname vir geleenthede en RSVP-status, losstaande van die
+    // datumfilter sodat 'n filterklik nie die 60s-opname herbegin nie.
+    useEffect(() => {
+        loadRsvps();
 
-    const interval = setInterval(() => {
-        if (active) {
-            loadEvents(false);
-        }
-    }, 60000);
+        const interval = setInterval(() => {
+            loadEventsRef.current(false);
+            loadRsvps();
+        }, 60000);
 
-    return () => {active = false; 
-        clearInterval(interval);
-    };
-}, [loadEvents]);
+        return () => clearInterval(interval);
+    }, [loadRsvps]);
 
     const filtered = events
         .filter((event) => {

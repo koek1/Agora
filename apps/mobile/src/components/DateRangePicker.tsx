@@ -65,14 +65,14 @@ export function DateRangePicker({ from, to, onChange }: DateRangePickerProps) {
   const { firstWeekday, daysInMonth, totalCells } = monthGrid(viewYear, viewMonth);
   const years = yearOptions(viewYear, today);
 
-  // Rol dadelik na die gekose maand en jaar sodra die wiele oopmaak, sodat die
-  // gebruiker nie eers hoef te soek waar hy is nie.
+  // Rol na die gekose maand en jaar sodra die wiele oopmaak, en volg saam as
+  // die gebruiker intussen met die maand-navigasie-knoppies rondblaai.
   useEffect(() => {
     if (!wheelsOpen) return;
     const centre = (index: number) => Math.max(0, index * WHEEL_ITEM_HEIGHT - WHEEL_HEIGHT / 2 + WHEEL_ITEM_HEIGHT / 2);
     monthScrollRef.current?.scrollTo({ y: centre(viewMonth), animated: false });
     yearScrollRef.current?.scrollTo({ y: centre(years.indexOf(viewYear)), animated: false });
-  }, [wheelsOpen]);
+  }, [wheelsOpen, viewMonth, viewYear]);
 
   function prevMonth() {
     if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }

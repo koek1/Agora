@@ -67,18 +67,22 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
         );
     }, [open]);
 
-    // Die wiele begin altyd toe wanneer die paneel oopgaan.
+    // Die wiele begin altyd toe wanneer die paneel oopgaan, en 'n ou voorskou
+    // van 'n vorige oopmaak-sessie moet nie agterbly nie.
     useEffect(() => {
-        if (!open) setWheelsOpen(false);
+        if (!open) {
+            setWheelsOpen(false);
+            setHoverKey(null);
+        }
     }, [open]);
 
-    // Spring dadelik na die gekose maand en jaar sodra die wiele oopmaak, sodat
-    // die gebruiker nooit eers hoef te rol om te sien waar hy is nie.
+    // Spring na die gekose maand en jaar sodra die wiele oopmaak, en volg saam
+    // as die gebruiker intussen met die maand-navigasie-knoppies rondblaai.
     useEffect(() => {
         if (!wheelsOpen) return;
         monthItemRef.current?.scrollIntoView({ block: 'center', behavior: 'auto' });
         yearItemRef.current?.scrollIntoView({ block: 'center', behavior: 'auto' });
-    }, [wheelsOpen]);
+    }, [wheelsOpen, viewMonth, viewYear]);
 
     // Maak toe met 'n klik buite of met Escape.
     useEffect(() => {
