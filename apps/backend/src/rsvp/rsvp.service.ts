@@ -92,11 +92,26 @@ export class RsvpService {
         return rsvp.save();
     }
 
-    async findMyRsvps(userId: string): Promise<RsvpDocument[]> {
-        return this.rsvpModel
-        .find({ user: userId })
-        .populate('event')
-        .exec();
+    async findMyRsvps(userId: string, dateFrom?: string, dateTo?: string): Promise<RsvpDocument[]> {
+        const rsvps = await this.rsvpModel
+            .find({ user: userId })
+            .populate('event')
+            .exec();
+
+        if (!dateFrom && !dateTo) return rsvps;
+
+        const from = dateFrom ? new Date(dateFrom) : null;
+        const to   = dateTo   ? new Date(dateTo)   : null;
+        if (to) to.setUTCHours(23, 59, 59, 999);
+
+        return rsvps.filter((r) => {
+            const event = r.event as unknown as { date?: Date } | null;
+            if (!event?.date) return false;
+            const eventDate = new Date(event.date);
+            if (from && eventDate < from) return false;
+            if (to && eventDate > to) return false;
+            return true;
+        });
     }
 
     async findRsvpsByEvent(eventId: string, requesterId: string, requesterRole: Role): Promise<RsvpDocument[]>{

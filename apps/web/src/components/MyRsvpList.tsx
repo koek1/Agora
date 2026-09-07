@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, X, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, X, Loader2, Search } from 'lucide-react';
 import type { MyRsvp, RsvpStatus } from '@/lib/api/rsvp';
 import { formatDateLong } from '@/lib/format-date';
 import { cancelRsvpAction } from '@/lib/actions/rsvp.actions';
@@ -17,7 +17,7 @@ const FILTERS: { value: RsvpStatus | 'alles'; label: string }[] = [
     { value: 'GEKANSELLEER', label: 'Gekanselleer' },
 ];
 
-export default function MyRsvpList({ initialRsvps, attendeeName }: { initialRsvps: MyRsvp[]; attendeeName: string }) {
+export default function MyRsvpList({ initialRsvps, dateFilter, attendeeName, }: { initialRsvps: MyRsvp[]; dateFilter?: React.ReactNode; attendeeName: string;  }) {
     const [rsvps, setRsvps] = useState(initialRsvps);
     const [filter, setFilter] = useState<RsvpStatus | 'alles'>('alles');
     const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -49,10 +49,16 @@ export default function MyRsvpList({ initialRsvps, attendeeName }: { initialRsvp
 
     // Alles wys "Bevestig en Hangende"
     // Alle gekanseleerde RSVP's slegs in Gekanseleerde bladsy
-    const filtered =
+
+    const [search, setSearch] = useState('');
+
+
+    const filtered = (
         filter === 'alles'
             ? sorted.filter((r) => r.status !== 'GEKANSELLEER')
-            : sorted.filter((r) => r.status === filter);
+            : sorted.filter((r) => r.status === filter)
+    ).filter((r) => !search || r.event?.title.toLowerCase().includes(search.toLowerCase()));
+
 
     async function handleCancel(rsvpId: string) {
         setCancelingId(rsvpId);
@@ -94,6 +100,22 @@ export default function MyRsvpList({ initialRsvps, attendeeName }: { initialRsvp
                     animation: rsvp-glow-pulse 1s ease-in-out 4;
                 }
             `}</style>
+
+                        <div className="flex flex-wrap items-center gap-2">
+
+                <div className="flex items-center gap-1.5 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-2 py-1">
+                    <Search size={13} className="text-[var(--color-text-subtle)] shrink-0" />
+                    <input
+                        type="text"
+                        placeholder="Soek..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="bg-transparent text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-subtle)] outline-none w-full"
+                    />
+                </div>
+                {dateFilter}
+            </div>
+
             <div className="flex flex-wrap gap-2">
                 {FILTERS.map((f) => (
                     <button
