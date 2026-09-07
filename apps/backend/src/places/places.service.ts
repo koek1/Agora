@@ -34,6 +34,9 @@ export class PlacesService {
         const apiKey = this.configService.get<string>('geoapify.apiKey');
         const url = `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(input)}&format=json&apiKey=${apiKey}`;
         const response = await fetch(url);
+        if (!response.ok) {
+            throw new BadRequestException('Kon nie tans adresse soek nie, probeer asseblief weer');
+        }
         const data = await response.json() as GeoapifyAutocompleteResponse;
 
         return data.results.map((result) => ({
@@ -49,6 +52,9 @@ export class PlacesService {
         const bias = lat !== undefined && lon !== undefined ? `&bias=proximity:${lon},${lat}` : '';
         const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&format=json${bias}&apiKey=${apiKey}`;
         const response = await fetch(url);
+        if (!response.ok) {
+            throw new BadRequestException('Kon nie tans die adres verifieer nie, probeer asseblief weer');
+        }
         const data = await response.json() as GeoapifySearchResponse;
 
         const result = data.results[0];

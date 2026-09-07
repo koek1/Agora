@@ -13,6 +13,7 @@ import { RabbitMQService } from '../messaging/rabbitmq.service';
 import { EXCHANGES, ROUTING_KEYS, PhotographerAssignedEvent } from '../messaging/events.constants';
 import { UsersService } from '../users/users.service';
 import { PlacesService } from '../places/places.service';
+import { PlaceDetailsDto } from '../places/dto/place-details.dto';
 
 @Injectable()
 export class EventsService {
@@ -33,20 +34,42 @@ export class EventsService {
             await this.assertValidAssignee(dto.assignedTo);
         }
 
-        const place = await this.placesService.getDetails(dto.address);
+        const place = await this.resolvePlace(dto.address, dto.placeId, dto.lat, dto.lon);
 
         const created = new this.eventModel({
             ...dto,
             date:       start,
             endDate:    end,
-            address:    place.address,
-            placeId:    place.placeId,
-            lat:        place.lat,
-            lon:        place.lon,
+            address:    place?.address ?? dto.address,
+            placeId:    place?.placeId ?? '',
+            lat:        place?.lat ?? null,
+            lon:        place?.lon ?? null,
             createdBy:  creatorId,
             assignedTo: dto.assignedTo ? new Types.ObjectId(dto.assignedTo) : null,
         });
         return created.save();
+    }
+
+    // Los die plek op sonder om Geoapify twee keer te vra vir dieselfde adres: as die
+    // frontend reeds /places/details geroep het (placeId + lat/lon teenwoordig), vertrou
+    // dit direk. Geokodering is 'n verrykings-stap, nie 'n harde vereiste nie -- as
+    // Geoapify af is of kwota op is, moet funksie-skepping/-opdatering steeds deurgaan
+    // met net die rou adres-string.
+    private async resolvePlace(
+        address: string,
+        placeId?: string,
+        lat?: number,
+        lon?: number,
+    ): Promise<PlaceDetailsDto | null> {
+        if (placeId && lat !== undefined && lon !== undefined) {
+            return { placeId, address, lat, lon };
+        }
+
+        try {
+            return await this.placesService.getDetails(address, lat, lon);
+        } catch {
+            return null;
+        }
     }
 
     async findAll(
@@ -245,17 +268,17 @@ export class EventsService {
             await this.assertValidAssignee(dto.assignedTo);
         }
 
-        const { date, endDate, address, ...rest } = dto;
+        const { date, endDate, address, placeId, lat, lon, ...rest } = dto;
         Object.assign(event, rest);
         if (date)          event.date       = new Date(date);
         if (endDate)       event.endDate    = new Date(endDate);
         if (dto.assignedTo) event.assignedTo = new Types.ObjectId(dto.assignedTo);
         if (address) {
-            const place = await this.placesService.getDetails(address);
-            event.address = place.address;
-            event.placeId = place.placeId;
-            event.lat     = place.lat;
-            event.lon     = place.lon;
+            const place = await this.resolvePlace(address, placeId, lat, lon);
+            event.address = place?.address ?? address;
+            event.placeId = place?.placeId ?? event.placeId;
+            event.lat     = place?.lat     ?? event.lat;
+            event.lon     = place?.lon     ?? event.lon;
         }
 
         this.assertEndAfterStart(event.date, event.endDate);

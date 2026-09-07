@@ -36,6 +36,9 @@ export interface CreateEventPayload {
   endDate?: string;
   location: string;
   address: string;
+  placeId?: string;
+  lat?: number;
+  lon?: number;
   maxCapacity: number;
   budget?: number;
   photographers?: string[];

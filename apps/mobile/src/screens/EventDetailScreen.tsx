@@ -509,6 +509,9 @@ function CreateEventForm({
         endDate,
         location: location.trim(),
         address: placeDetails.address,
+        placeId: placeDetails.placeId,
+        lat: placeDetails.lat,
+        lon: placeDetails.lon,
         maxCapacity: cap,
         budget: budgetNum,
         sellsTickets,
@@ -664,7 +667,6 @@ function CreateEventForm({
 
           <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Adres *</Text>
           <AddressAutocompleteInput
-            initialAddress={placeDetails?.address}
             onSelect={setPlaceDetails}
             editable={!isSubmitting}
           />

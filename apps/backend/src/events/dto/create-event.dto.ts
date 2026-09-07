@@ -44,7 +44,20 @@ export class CreateEventDto {
 
     @IsString()
     @IsNotEmpty()
+    @MaxLength(200)
     address!: string;
+
+    @IsOptional()
+    @IsString()
+    placeId?: string;
+
+    @IsOptional()
+    @IsNumber()
+    lat?: number;
+
+    @IsOptional()
+    @IsNumber()
+    lon?: number;
 
     @IsInt()
     @Min(1)

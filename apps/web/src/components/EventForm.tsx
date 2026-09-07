@@ -32,6 +32,8 @@ export interface EventFormValues {
     location:           string;
     address:            string;
     placeId:            string;
+    lat:                number | null;
+    lon:                number | null;
     type:               EventType;
     intendedAttendance: AttendanceRole;
     capacity:           string;
@@ -84,7 +86,7 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
             e.endTime = 'Eindtyd moet na begintyd wees';
         }
         if (!formData.location.trim()) e.location = 'Ligging is verpligtend';
-        if (!formData.placeId) e.address = 'Kies \'n geldige adres uit die soeklys';
+        if (mode === 'create' && !formData.placeId) e.address = 'Kies \'n geldige adres uit die soeklys';
         if (!formData.capacity || Number(formData.capacity) <= 0)
             e.capacity = 'Geldige kapasiteit is verpligtend';
         if (formData.budget === '' || Number(formData.budget) < 0)
@@ -114,6 +116,9 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
                 endDate:            `${formData.date}T${formData.endTime}`,
                 location:           formData.location,
                 address:            formData.address,
+                placeId:            formData.placeId || undefined,
+                lat:                formData.lat ?? undefined,
+                lon:                formData.lon ?? undefined,
                 maxCapacity:        Number(formData.capacity),
                 budget:             Number(formData.budget),
                 intendedAttendance: formData.intendedAttendance,
@@ -249,6 +254,8 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
                                 ...prev,
                                 placeId: details?.placeId ?? '',
                                 address: details?.address ?? prev.address,
+                                lat: details?.lat ?? null,
+                                lon: details?.lon ?? null,
                             }));
                             if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
                         }}

@@ -24,6 +24,7 @@ export function AddressAutocompleteInput({ initialAddress, onSelect, editable = 
     const [pickError, setPickError] = useState<string | null>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const skipNextSearchRef = useRef(false);
+    const requestIdRef = useRef(0);
 
     useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -39,14 +40,16 @@ export function AddressAutocompleteInput({ initialAddress, onSelect, editable = 
     }
 
     debounceRef.current = setTimeout(async () => {
+        const requestId = ++requestIdRef.current;
         setIsSearching(true);
         try {
         const results = await searchPlaces(query);
+        if (requestId !== requestIdRef.current) return;
         setSuggestions(results);
         } catch {
-        setSuggestions([]);
+        if (requestId === requestIdRef.current) setSuggestions([]);
         } finally {
-        setIsSearching(false);
+        if (requestId === requestIdRef.current) setIsSearching(false);
         }
     }, 400);
 

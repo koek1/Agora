@@ -91,14 +91,18 @@ export class RsvpService {
     }
 
     async createPaidTicket(eventId: string, userId: string, paymentId: string): Promise<RsvpDocument> {
-        await this.eventsService.incrementConfirmedAttendees(eventId);
-
-        // Sien createRsvp hierbo -- 'n vorige gekanselleerde RSVP blokkeer 'n nuwe
-        // dokument weens die unieke indeks op (event, user), so herleef dit eerder.
         const existing = await this.rsvpModel
         .findOne({ event: eventId, user: userId })
         .exec();
+        if (existing && existing.status !== RsvpStatus.GEKANSELLEER) {
+            throw new ConflictException("Jy het reeds 'n kaartjie vir hierdie geleentheid");
+        }
 
+        await this.eventsService.incrementConfirmedAttendees(eventId);
+
+        // 'n Vorige gekanselleerde RSVP vir dieselfde (event, user) bestaan reeds as 'n
+        // dokument -- die unieke indeks op (event, user) laat nie 'n tweede toe nie, so
+        // ons herleef die bestaande dokument met 'n vars QR-kode eerder as om een te skep.
         const rsvp = existing ?? new this.rsvpModel({ event: eventId, user: userId, qrPayload: uuidv4() });
         if (existing) {
             rsvp.qrPayload = uuidv4();

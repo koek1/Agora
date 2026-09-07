@@ -155,7 +155,7 @@ export class PaymentsService {
                 payment._id.toString(),
             );
         } catch (err) {
-            if (this.isDuplicateTicketError(err)) {
+            if (err instanceof ConflictException || this.isDuplicateTicketError(err)) {
                 // Die gebruiker het reeds 'n kaartjie vir hierdie geleentheid, uit 'n
                 // ander, aparte betaling (bv. 'n PayFast ITN-herhaling vir 'n ou
                 // poging wat eers nou deur handtekening-verifikasie kom). Geen nuwe
