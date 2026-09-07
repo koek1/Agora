@@ -102,6 +102,7 @@ export class RsvpService {
 
         const from = dateFrom ? new Date(dateFrom) : null;
         const to   = dateTo   ? new Date(dateTo)   : null;
+        if (to) to.setUTCHours(23, 59, 59, 999);
 
         return rsvps.filter((r) => {
             const event = r.event as unknown as { date?: Date } | null;

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -95,20 +96,12 @@ export function RsvpScreen() {
     }, [fetchRsvps]),
   );
 
-  // Laai ook dadelik wanneer die datumreeks verander, sonder om vir 'n
-  // skerm-fokus te wag.
-  useEffect(() => {
-    const active = { current: true };
-    fetchRsvps(active);
-    return () => { active.current = false; };
-  }, [dateFrom, dateTo]);
-
   // Teks-soek bly plaaslik (backend het nie teks-soek nie) datum is reeds
   // deur die backend gefiltreer teen hierdie punt.
   const filteredRsvps = useMemo(
     () => rsvps
       .filter((r) => filter === 'alles' || r.status === filter)
-      .filter((r) => !search || r.event.title.toLowerCase().includes(search.toLowerCase())),
+      .filter((r) => !search || (r.event?.title ?? '').toLowerCase().includes(search.toLowerCase())),
     [rsvps, filter, search],
   );
 
@@ -185,6 +178,24 @@ export function RsvpScreen() {
         title="My RSVPs"
         subtitle={`${rsvps.length} inskrywing${rsvps.length !== 1 ? 's' : ''}`}
       />
+
+      {/* Soekveld */}
+      <View style={styles.searchRow}>
+        <Feather name="search" size={14} color={colors.textSubtle} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Soek volgens titel..."
+          placeholderTextColor={colors.textSubtle}
+          value={search}
+          onChangeText={setSearch}
+          accessibilityLabel="Soek RSVPs volgens geleentheidstitel"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')} accessibilityLabel="Maak soekterm skoon">
+            <Feather name="x" size={14} color={colors.textSubtle} />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Filter chips */}
       <View style={styles.filterRow}>
@@ -398,6 +409,26 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
     chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     chipText: { fontSize: 16, fontWeight: '700', color: colors.textSubtle },
     chipTextActive: { color: colors.surface },
+
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      backgroundColor: colors.surface,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.text,
+      padding: 0,
+    },
 
     dateFilterRow: {
       flexDirection: 'row',
