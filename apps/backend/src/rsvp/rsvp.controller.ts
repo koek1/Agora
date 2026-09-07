@@ -1,5 +1,5 @@
 ﻿// ========== Imports: ==========
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Res, StreamableFile, UseGuards, Query } from '@nestjs/common';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -15,6 +15,7 @@ import { ScanRsvpDto } from './dto/scan-rsvp.dto';
 import { RsvpResponseDto } from './dto/rsvp-response.dto';
 import { UserDocument } from '../users/schemas/user.schema';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { FindMyRsvpsQueryDto } from './dto/find-my-rsvps-query.dto';
 
 @Controller('rsvp')
 @UseGuards(JwtAuthGuard)
@@ -58,8 +59,9 @@ export class RsvpController {
     @Throttle({ polling: { limit: 60, ttl: 60000 } })
     async findMyRsvps(
         @CurrentUser() user: JwtPayload,
+        @Query() query: FindMyRsvpsQueryDto,
     ): Promise <RsvpDocument[]> {
-        return this.rsvpService.findMyRsvps(user.sub);
+        return this.rsvpService.findMyRsvps(user.sub, query.dateFrom, query.dateTo);
     }
 
     @Get('event/:eventId')

@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
 import InfoModal from '@/components/InfoModal';
+import DateRangePicker from '@/components/DateRangePicker';
+import { toIsoRange } from '@/lib/date-range';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import { canCreateEvents } from '@/lib/rbac';
 import { useCurrentUser } from '@/components/UserContext';
@@ -55,6 +57,13 @@ export default function EventsPage() {
     const [statusFilter, setStatusFilter] = useState<EventStatus | 'all'>('all');
     const [typeFilter, setTypeFilter] = useState<EventType | 'all'>('all');
 
+    // Datumreeks-filter as 'yyyy-mm-dd'-sleutels. dateTo bly leeg solank net een
+    // dag gekies is -- dan geld daardie enkele dag as die hele reeks.
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo]     = useState('');
+
+    const rangeActive = Boolean(dateFrom);
+
     const searchParams = useSearchParams();
     const router = useRouter();
     const [newEventId, setNewEventId] = useState<string | null>(null);
@@ -86,17 +95,31 @@ export default function EventsPage() {
     // bly die kalenderbladsy se werk. Geen onder-grens nie: verby geleenthede
     // word steeds gehaal sodat die "Verby"-statusfilter hulle kan wys, hulle
     // word net client-kant (matchesStatus hieronder) by verstek weggesteek.
+    //
+    // 'n Gekose datumreeks vervang daardie verstek-venster heeltemal (dit gaan as
+    // from/to na die backend toe), sodat die gebruiker ook verder terug in die
+    // verlede of verder in die toekoms as die verstek kan kyk.
+    //
+    // eventsRequestId hou die volgorde van versoeke dop: is 'n stadiger, ouer
+    // versoek se antwoord laaster terug as 'n vinniger, latere een (bv. die
+    // gebruiker klik gou-gou twee dae), moet dit nie die nuwer resultate
+    // oorskryf nie.
+    const eventsRequestId = useRef(0);
+
     const loadEvents = useCallback(async (showLoading = false) => {
         if (showLoading) setLoading(true);
+        const requestId = ++eventsRequestId.current;
 
         try {
             const now = new Date();
             const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59, 999);
 
-            const [eventsResult, rsvpsResult] = await Promise.all([
-                listEventsAction({ to: endOfNextMonth.toISOString() }),
-                getMyRsvpsAction(),
-            ]);
+            // Van die oggend van die eerste dag tot die laaste oomblik van die
+            // laaste dag. Is net een dag gekies, is daardie dag self albei grense.
+            const filters = toIsoRange(dateFrom, dateTo) ?? { to: endOfNextMonth.toISOString() };
+
+            const eventsResult = await listEventsAction(filters);
+            if (requestId !== eventsRequestId.current) return; // 'n latere versoek het reeds gewen
 
             if (eventsResult.error) {
                 if (showLoading) setLoadError(eventsResult.error);
@@ -104,40 +127,54 @@ export default function EventsPage() {
                 setLoadError(null);
                 setEvents(eventsResult.events ?? []);
             }
+        } catch {
+            if (requestId === eventsRequestId.current && showLoading) {
+                setLoadError('Kon nie geleenthede laai nie.');
+            }
+        } finally {
+            if (requestId === eventsRequestId.current) setLoading(false);
+        }
+    }, [dateFrom, dateTo]);
 
+    // RSVP-status is los van die datumfilter, dus moenie herlaai net omdat die
+    // gebruiker die datumreeks verander nie.
+    const loadRsvps = useCallback(async () => {
+        try {
+            const rsvpsResult = await getMyRsvpsAction();
             const activeEventIds = (rsvpsResult.rsvps ?? [])
                 .filter((r) => r.status !== 'GEKANSELLEER' && r.event)
                 .map((r) => r.event!._id);
             setRsvpdEventIds(new Set(activeEventIds));
-            
         } catch {
-            if (showLoading) setLoadError('Kon nie geleenthede laai nie.');
-
-        } finally {
-            setLoading(false);
+            // Stilweg misluk -- die RSVP-kolletjie op elke kaart is 'n bykomstigheid,
+            // nie krities vir die geleentheidslys self nie.
         }
     }, []);
 
+    // Herlaai die geleenthede sodra die datumfilter verander (of by die eerste laai).
     useEffect(() => {
-     let active = true;
+        loadEvents(true);
+    }, [loadEvents]);
 
-        const initialLoad = async () => {
-         if (!active) return;
-         await loadEvents(true);
-     };
+    // 'n Ref sodat die 60s-opname hieronder altyd die jongste datumfilter
+    // gebruik, sonder dat 'n filterklik die opname self herbegin.
+    const loadEventsRef = useRef(loadEvents);
+    useEffect(() => {
+        loadEventsRef.current = loadEvents;
+    }, [loadEvents]);
 
-    initialLoad();
+    // Onafhanklike opname vir geleenthede en RSVP-status, losstaande van die
+    // datumfilter sodat 'n filterklik nie die 60s-opname herbegin nie.
+    useEffect(() => {
+        loadRsvps();
 
-    const interval = setInterval(() => {
-        if (active) {
-            loadEvents(false);
-        }
-    }, 60000);
+        const interval = setInterval(() => {
+            loadEventsRef.current(false);
+            loadRsvps();
+        }, 60000);
 
-    return () => {active = false; 
-        clearInterval(interval);
-    };
-}, [loadEvents]);
+        return () => clearInterval(interval);
+    }, [loadRsvps]);
 
     const filtered = events
         .filter((event) => {
@@ -146,9 +183,11 @@ export default function EventsPage() {
                 event.description.toLowerCase().includes(search.toLowerCase());
             // 'Alle Status' beteken hier alle nie-verby geleenthede, 'n verby
             // geleentheid wys slegs as die 'Verby'-status spesifiek gekies is.
+            // Uitsondering: het die gebruiker self 'n datumreeks gekies, dan is die
+            // verby geleenthede binne daardie reeks juis wat hy gevra het.
             const matchesStatus =
                 statusFilter === 'all'
-                    ? deriveStatus(event) !== 'past'
+                    ? rangeActive || deriveStatus(event) !== 'past'
                     : deriveStatus(event) === statusFilter;
             const matchesType = typeFilter === 'all' || event.type === typeFilter;
             return matchesSearch && matchesStatus && matchesType;
@@ -279,6 +318,13 @@ export default function EventsPage() {
                         </div>
                     </InfoModal>
                 </div>
+
+                {/* Datum-reeks-kieser: leeg = die verstek-venster */}
+                <DateRangePicker
+                    from={dateFrom}
+                    to={dateTo}
+                    onChange={(nextFrom, nextTo) => { setDateFrom(nextFrom); setDateTo(nextTo); }}
+                />
             </div>
 
             {/* ── Body ── */}
@@ -297,7 +343,9 @@ export default function EventsPage() {
             ) : filtered.length === 0 ? (
                 <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-12 text-center">
                     <p className="text-[var(--color-text-subtle)] text-sm">
-                        Geen geleenthede gevind nie.
+                        {rangeActive
+                            ? 'Geen geleenthede in die gekose datumreeks nie.'
+                            : 'Geen geleenthede gevind nie.'}
                     </p>
                 </div>
             ) : (
