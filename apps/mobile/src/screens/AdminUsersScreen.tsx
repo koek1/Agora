@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   FlatList, Modal, Pressable, ActivityIndicator, Alert,
+  ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -10,6 +11,7 @@ import { useThemeColors } from '../theme/theme';
 import { typography } from '../theme/typography';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { getAllUsers, updateUser, ALL_USER_TAGS, getTagLabel } from '../api/users';
+import { useAuthStore } from '../stores/auth.store';
 import { getRoleLabel } from '../lib/rbac';
 import type { UserResponse, UserTag } from '../api/client';
 
@@ -26,6 +28,14 @@ export function AdminUsersScreen() {
   const [selected, setSelected] = useState<UserResponse | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [tagBusy, setTagBusy] = useState(false);
+
+  // Wat in die naamvelde getik word. `selected` bly wat op die bediener staan,
+  // sodat die lys en die opskrif nooit 'n halwe redigering as die naam wys nie.
+  const [draftName, setDraftName] = useState('');
+  const [draftSurname, setDraftSurname] = useState('');
+  const [nameBusy, setNameBusy] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSaved, setNameSaved] = useState(false);
 
   const loadUsers = useCallback(async () => {
     setLoadError(null);
@@ -57,9 +67,61 @@ export function AdminUsersScreen() {
     ? ALL_USER_TAGS.filter((t) => !selected.tags.includes(t.value))
     : [];
 
+  const nameDirty = !!selected
+    && (draftName.trim() !== selected.name || draftSurname.trim() !== selected.surname);
+  const nameIncomplete = !draftName.trim() || !draftSurname.trim();
+
+  // Maak die kaart oop met die velde op die huidige gestoorde naam.
+  function openDetail(target: UserResponse) {
+    setSelected(target);
+    setDraftName(target.name);
+    setDraftSurname(target.surname);
+    setNameError(null);
+    setNameSaved(false);
+  }
+
+  // Onvoltooide redigerings word by toemaak weggegooi, nie stilweg behou nie.
   function closeDetail() {
     setSelected(null);
     setPickerOpen(false);
+    setNameError(null);
+    setNameSaved(false);
+  }
+
+  function editName(setter: (value: string) => void) {
+    return (value: string) => {
+      setter(value);
+      setNameError(null);
+      setNameSaved(false);
+    };
+  }
+
+  async function saveName() {
+    if (!selected) return;
+    const name = draftName.trim();
+    const surname = draftSurname.trim();
+
+    setNameBusy(true);
+    setNameError(null);
+    setNameSaved(false);
+    try {
+      const updated = await updateUser(selected.id, { name, surname });
+      setSelected(updated);
+      setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
+      setDraftName(updated.name);
+      setDraftSurname(updated.surname);
+      setNameSaved(true);
+
+      // 'n Admin wat sy eie ry wysig, moet die nuwe naam dadelik oral in die
+      // app sien, nie eers na 'n herbegin nie.
+      if (useAuthStore.getState().user?.id === updated.id) {
+        useAuthStore.setState({ user: updated });
+      }
+    } catch (err: any) {
+      setNameError(err?.response?.data?.message ?? 'Kon nie die naam stoor nie.');
+    } finally {
+      setNameBusy(false);
+    }
   }
 
   async function persistTags(nextTags: UserTag[]) {
@@ -160,7 +222,7 @@ export function AdminUsersScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.row}
-              onPress={() => setSelected(item)}
+              onPress={() => openDetail(item)}
               activeOpacity={0.75}
               accessibilityLabel={`Bestuur ${item.name} ${item.surname}`}
             >
@@ -191,7 +253,15 @@ export function AdminUsersScreen() {
 
       <Modal visible={!!selected} transparent animationType="fade" onRequestClose={closeDetail}>
         <Pressable style={styles.modalBackdrop} onPress={closeDetail}>
+          <KeyboardAvoidingView
+            style={styles.modalKeyboardWrap}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
           <Pressable style={styles.modalCard} onPress={() => {}}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
             {selected && (
               <>
                 <View style={styles.modalHeader}>
@@ -202,6 +272,52 @@ export function AdminUsersScreen() {
                     <Feather name="x" size={18} color={colors.textSubtle} />
                   </TouchableOpacity>
                 </View>
+
+                <Text style={styles.sectionLabel}>Naam</Text>
+                <View style={styles.nameRow}>
+                  <TextInput
+                    style={[styles.nameInput, { flex: 1 }]}
+                    value={draftName}
+                    onChangeText={editName(setDraftName)}
+                    maxLength={50}
+                    placeholder="Naam"
+                    placeholderTextColor={colors.textSubtle}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                  <TextInput
+                    style={[styles.nameInput, { flex: 1 }]}
+                    value={draftSurname}
+                    onChangeText={editName(setDraftSurname)}
+                    maxLength={50}
+                    placeholder="Van"
+                    placeholderTextColor={colors.textSubtle}
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                {nameError && <Text style={styles.nameError}>{nameError}</Text>}
+
+                <TouchableOpacity
+                  style={[
+                    styles.nameSaveBtn,
+                    (!nameDirty || nameIncomplete || nameBusy) && styles.nameSaveBtnDisabled,
+                  ]}
+                  onPress={saveName}
+                  disabled={!nameDirty || nameIncomplete || nameBusy}
+                  accessibilityLabel="Stoor naam"
+                >
+                  {nameBusy ? (
+                    <ActivityIndicator size="small" color={colors.primaryText} />
+                  ) : (
+                    <Text style={styles.nameSaveText}>
+                      {nameSaved && !nameDirty ? 'Naam gestoor' : 'Stoor naam'}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.sectionDivider} />
 
                 <Text style={styles.sectionLabel}>Tags</Text>
                 <View style={styles.tagsRow}>
@@ -264,7 +380,9 @@ export function AdminUsersScreen() {
                 </View>
               </>
             )}
+            </ScrollView>
           </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
     </SafeAreaView>
@@ -360,6 +478,7 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
     badgeText: { ...typography.micro },
 
     modalBackdrop: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 18 },
+    modalKeyboardWrap: { width: '100%', maxHeight: '100%', justifyContent: 'center' },
     modalCard: {
       backgroundColor: colors.surface,
       borderRadius: 16,
@@ -368,6 +487,9 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       padding: 16,
       maxWidth: 480,
       width: '100%',
+      // Bind die hoogte sodat die ScrollView binne-in kan rol wanneer die
+      // sleutelbord oop is of die kaart langer is as die skerm.
+      maxHeight: '85%',
       alignSelf: 'center',
     },
     modalHeader: {
@@ -411,6 +533,34 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
     },
     tagPickerRow: { paddingHorizontal: 12, paddingVertical: 10 },
     tagPickerText: { ...typography.body, color: colors.text },
+
+    nameRow: { flexDirection: 'row', gap: 8 },
+    nameInput: {
+      ...typography.body,
+      color: colors.text,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    nameError: { ...typography.caption, color: colors.red, marginTop: 8 },
+    nameSaveBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      paddingVertical: 11,
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    nameSaveBtnDisabled: { opacity: 0.5 },
+    nameSaveText: { color: colors.primaryText, ...typography.body, fontWeight: '800' },
+
+    sectionDivider: {
+      height: 1,
+      backgroundColor: colors.border,
+      marginVertical: 16,
+    },
 
     detailsBlock: { marginTop: 16, paddingTop: 4, borderTopWidth: 1, borderTopColor: colors.border },
   });
