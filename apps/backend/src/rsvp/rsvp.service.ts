@@ -1,7 +1,7 @@
 ﻿// ========== Imports: ==========
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { isValidObjectId, Model } from 'mongoose';
+import { isValidObjectId, Model, Types } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { toBuffer } from 'qrcode';
 import { Rsvp, RsvpDocument, RsvpStatus } from './schemas/rsvp.schema';
@@ -47,17 +47,28 @@ export class RsvpService {
         const existing = await this.rsvpModel
         .findOne({ event: dto.eventId, user: userId })
         .exec();
-        if (existing) {
+        if (existing && existing.status !== RsvpStatus.GEKANSELLEER) {
             throw new ConflictException('Jy het alreeds vir hierdie geleentheid ingeskryf');
         }
 
         await this.eventsService.incrementConfirmedAttendees(dto.eventId);
 
-        const rsvp = new this.rsvpModel ({
+        // 'n Vorige gekanselleerde RSVP vir dieselfde (event, user) bestaan reeds as 'n
+        // dokument -- die unieke indeks op (event, user) laat nie 'n tweede toe nie, so
+        // ons herleef die bestaande dokument met 'n vars QR-kode eerder as om een te skep.
+        const rsvp = existing ?? new this.rsvpModel({
             event: dto.eventId,
             user: userId,
             qrPayload: uuidv4(),
         });
+        if (existing) {
+            rsvp.status = RsvpStatus.HANGENDE;
+            rsvp.qrPayload = uuidv4();
+            rsvp.checkedIn = false;
+            rsvp.checkedInAt = null;
+            rsvp.googleCalendarEventId = null;
+            rsvp.outlookCalendarEventId = null;
+        }
         await rsvp.save();
 
         const user = await this.usersService.findById(userId);
@@ -82,13 +93,24 @@ export class RsvpService {
     async createPaidTicket(eventId: string, userId: string, paymentId: string): Promise<RsvpDocument> {
         await this.eventsService.incrementConfirmedAttendees(eventId);
 
-        const rsvp = new this.rsvpModel({
-            event: eventId,
-            user: userId,
-            qrPayload: uuidv4(),
-            paid: true,
-            payment: paymentId,
-        });
+        // Sien createRsvp hierbo -- 'n vorige gekanselleerde RSVP blokkeer 'n nuwe
+        // dokument weens die unieke indeks op (event, user), so herleef dit eerder.
+        const existing = await this.rsvpModel
+        .findOne({ event: eventId, user: userId })
+        .exec();
+
+        const rsvp = existing ?? new this.rsvpModel({ event: eventId, user: userId, qrPayload: uuidv4() });
+        if (existing) {
+            rsvp.qrPayload = uuidv4();
+            rsvp.checkedIn = false;
+            rsvp.checkedInAt = null;
+            rsvp.googleCalendarEventId = null;
+            rsvp.outlookCalendarEventId = null;
+        }
+        rsvp.status = RsvpStatus.BEVESTIG;
+        rsvp.paid = true;
+        rsvp.payment = new Types.ObjectId(paymentId);
+
         return rsvp.save();
     }
 

@@ -44,7 +44,7 @@ export class CreateEventDto {
 
     @IsString()
     @IsNotEmpty()
-    placeId!: string;
+    address!: string;
 
     @IsInt()
     @Min(1)

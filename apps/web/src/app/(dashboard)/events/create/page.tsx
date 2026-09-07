@@ -25,6 +25,8 @@ export default function CreateEventPage() {
                     time: '',
                     endTime: '',
                     location: '',
+                    address: '',
+                    placeId: '',
                     type: 'public',
                     intendedAttendance: 'GAS',
                     capacity: '',

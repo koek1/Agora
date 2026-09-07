@@ -13,6 +13,10 @@ export interface Event {
     date:                     string;
     endDate?:                 string;
     location:                 string;
+    address:                  string;
+    placeId:                  string;
+    lat:                      number | null;
+    lon:                      number | null;
     maxCapacity:              number;
     budget:                   number;
     createdBy:                string;
@@ -35,6 +39,7 @@ export interface CreateEventPayload {
     date:                      string;
     endDate?:                  string;
     location:                  string;
+    address:                   string;
     maxCapacity:               number;
     budget?:                   number;
     intendedAttendance?:       AttendanceRole;

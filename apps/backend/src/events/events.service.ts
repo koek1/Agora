@@ -33,7 +33,7 @@ export class EventsService {
             await this.assertValidAssignee(dto.assignedTo);
         }
 
-        const place = await this.placesService.getDetails(dto.placeId);
+        const place = await this.placesService.getDetails(dto.address);
 
         const created = new this.eventModel({
             ...dto,
@@ -245,13 +245,13 @@ export class EventsService {
             await this.assertValidAssignee(dto.assignedTo);
         }
 
-        const { date, endDate, placeId, ...rest } = dto;
+        const { date, endDate, address, ...rest } = dto;
         Object.assign(event, rest);
         if (date)          event.date       = new Date(date);
         if (endDate)       event.endDate    = new Date(endDate);
         if (dto.assignedTo) event.assignedTo = new Types.ObjectId(dto.assignedTo);
-        if (placeId) {
-            const place = await this.placesService.getDetails(placeId);
+        if (address) {
+            const place = await this.placesService.getDetails(address);
             event.address = place.address;
             event.placeId = place.placeId;
             event.lat     = place.lat;

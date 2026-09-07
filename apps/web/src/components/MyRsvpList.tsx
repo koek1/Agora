@@ -165,6 +165,11 @@ export default function MyRsvpList({ initialRsvps, attendeeName }: { initialRsvp
                                             <MapPin size={13} className="shrink-0" />
                                             <span className="truncate">{r.event.location}</span>
                                         </div>
+                                        {r.event.address && (
+                                            <div className="flex items-center gap-2 text-xs text-[var(--color-text-subtle)] pl-5">
+                                                {r.event.address}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -180,6 +185,12 @@ export default function MyRsvpList({ initialRsvps, attendeeName }: { initialRsvp
                                         eventTitle={r.event?.title ?? 'Geleentheid'}
                                         eventDate={r.event ? formatDateLong(r.event.date) : ''}
                                         eventLocation={r.event?.location ?? ''}
+                                        eventAddress={r.event?.address ?? ''}
+                                        mapsUrl={
+                                            r.event?.lat != null && r.event?.lon != null
+                                                ? `https://www.google.com/maps/search/?api=1&query=${r.event.lat},${r.event.lon}`
+                                                : null
+                                        }
                                         attendeeName={attendeeName}
                                         disabled={isCancelled}
                                     />

@@ -19,6 +19,6 @@ export class PlacesController {
 
     @Get('details')
     async details(@Query() query: PlaceDetailsQueryDto): Promise<PlaceDetailsDto> {
-        return this.placesService.getDetails(query.placeId);
+        return this.placesService.getDetails(query.address);
     }
 }

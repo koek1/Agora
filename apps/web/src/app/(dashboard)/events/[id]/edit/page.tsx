@@ -74,6 +74,8 @@ export default async function EditEventPage({ params }: { params: { id: string }
                     time,
                     endTime,
                     location: event.location,
+                    address: event.address,
+                    placeId: event.placeId,
                     type: event.type,
                     intendedAttendance: event.intendedAttendance,
                     capacity: String(event.maxCapacity),

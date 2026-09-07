@@ -13,14 +13,15 @@ interface GeoapifyAutocompleteResponse {
     results: GeoapifyAutocompleteResult[];
 }
 
-interface GeoapifyPlaceDetailsProperties {
+interface GeoapifySearchResult {
+    place_id:  string;
     formatted?: string;
-    lat?: number;
-    lon?: number;
+    lat?:       number;
+    lon?:       number;
 }
 
-interface GeoapifyPlaceDetailsResponse {
-    features: { properties: GeoapifyPlaceDetailsProperties }[];
+interface GeoapifySearchResponse {
+    results: GeoapifySearchResult[];
 }
 
 @Injectable()
@@ -39,22 +40,22 @@ export class PlacesService {
         }));
     }
 
-    async getDetails(placeId: string): Promise<PlaceDetailsDto> {
+    async getDetails(address: string): Promise<PlaceDetailsDto> {
         const apiKey = this.configService.get<string>('geoapify.apiKey');
-        const url = `https://api.geoapify.com/v2/place-details?id=${encodeURIComponent(placeId)}&apiKey=${apiKey}`;
+        const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&format=json&apiKey=${apiKey}`;
         const response = await fetch(url);
-        const data = await response.json() as GeoapifyPlaceDetailsResponse;
+        const data = await response.json() as GeoapifySearchResponse;
 
-        const properties = data.features[0]?.properties;
-        if (!properties?.formatted || properties.lat === undefined || properties.lon === undefined) {
+        const result = data.results[0];
+        if (!result?.formatted || result.lat === undefined || result.lon === undefined) {
             throw new BadRequestException('Kon nie ‘n geldige adres vir hierdie plek vind nie');
         }
 
         return {
-            placeId,
-            address: properties.formatted,
-            lat: properties.lat,
-            lon: properties.lon,
+            placeId: result.place_id,
+            address: result.formatted,
+            lat: result.lat,
+            lon: result.lon,
         };
     }
 }

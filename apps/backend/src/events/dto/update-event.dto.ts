@@ -49,7 +49,7 @@ export class UpdateEventDto {
     @IsOptional()
     @IsString()
     @IsNotEmpty()
-    placeId?: string;
+    address?: string;
 
     @IsOptional()
     @IsInt()
