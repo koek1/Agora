@@ -8,8 +8,11 @@
 
   --color-primary:      #06647F;
   --color-primary-text: #FFFFFF;
+  --color-primary-soft:       rgba(6, 100, 127, 0.13);
+  --color-primary-soft-hover: rgba(6, 100, 127, 0.24);
 
   --color-bg:      #EEF4FB;
+  --color-bg-soft: rgba(238, 244, 251, 0.6);
   --color-surface: #FFFFFF;
   --color-border:  #B0C4D8;
 
@@ -33,8 +36,11 @@
 .dark {
   --color-primary:      #0DC9D0;
   --color-primary-text: #020D18;
+  --color-primary-soft:       rgba(13, 201, 208, 0.16);
+  --color-primary-soft-hover: rgba(13, 201, 208, 0.28);
 
   --color-bg:      #0A1929;
+  --color-bg-soft: rgba(10, 25, 41, 0.6);
   --color-surface: #112233;
   --color-border:  #1E3A4A;
 

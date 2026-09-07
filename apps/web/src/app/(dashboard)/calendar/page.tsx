@@ -164,7 +164,7 @@ export default function CalendarPage() {
                                     'border-r border-b border-[var(--color-border)]',
                                     (cellIdx + 1) % 7 === 0 ? 'border-r-0' : '',
                                     isLastRow ? 'border-b-0' : '',
-                                    !inMonth ? 'bg-[var(--color-bg)]/60' : '',
+                                    !inMonth ? 'bg-[var(--color-bg-soft)]' : '',
                                     inMonth && dayEvents.length > 0 ? 'cursor-pointer hover:bg-[var(--color-bg)] transition-colors' : '',
                                 ].join(' ')}
                             >
