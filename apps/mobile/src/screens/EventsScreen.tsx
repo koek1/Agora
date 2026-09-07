@@ -30,6 +30,8 @@ import {
 import { canCreateEvents } from '../lib/rbac';
 import { takeEventsPrefetch } from '../lib/prefetch';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { DateRangePicker } from '../components/DateRangePicker';
+import { toIsoRange } from '../lib/date-range';
 import { typography } from '../theme/typography';
 
 type MenuState = { eventId: string; x: number; y: number } | null;
@@ -49,6 +51,10 @@ export function EventsScreen() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EventStatus | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<EventType | 'all'>('all');
+  // Datumreeks as 'yyyy-mm-dd'-sleutels. dateTo is gelyk aan dateFrom vir 'n
+  // enkel gekose dag, en albei is leeg wanneer daar geen datumfilter is nie.
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [menuState, setMenuState] = useState<MenuState>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -66,7 +72,13 @@ export function EventsScreen() {
         setLoading(true);
         setLoadError(null);
         try {
-          const result = await (takeEventsPrefetch() ?? listEvents());
+          // Die datumreeks word backend-kant afgedwing (from/to), nie hier nie,
+          // sodat 'n reeks buite die voorafgehaalde stel ook werk. Die
+          // voorafhaling geld dus net vir die onbeperkte lys.
+          const range = toIsoRange(dateFrom, dateTo);
+          const result = range
+            ? await listEvents(range.from, range.to)
+            : await (takeEventsPrefetch() ?? listEvents());
           if (active) setEvents(result);
         } catch {
           if (active) setLoadError('Kon nie funksies laai nie.');
@@ -75,7 +87,7 @@ export function EventsScreen() {
         }
       })();
       return () => { active = false; };
-    }, []),
+    }, [dateFrom, dateTo]),
   );
 
   const filtered = useMemo(() => {
@@ -118,7 +130,8 @@ export function EventsScreen() {
     ? events.find((e) => e.id === menuState.eventId)
     : null;
 
-  const activeFilters = (statusFilter !== 'all' ? 1 : 0) + (typeFilter !== 'all' ? 1 : 0);
+  const activeFilters =
+    (statusFilter !== 'all' ? 1 : 0) + (typeFilter !== 'all' ? 1 : 0) + (dateFrom ? 1 : 0);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -228,11 +241,12 @@ export function EventsScreen() {
             onPress={() => {}}
           >
             <View style={styles.sheetHandle} />
+            <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.sheetHeader}>
               <Text style={[styles.sheetTitle, { color: colors.text }]}>Filter funksies</Text>
               {activeFilters > 0 && (
                 <TouchableOpacity
-                  onPress={() => { setStatusFilter('all'); setTypeFilter('all'); }}
+                  onPress={() => { setStatusFilter('all'); setTypeFilter('all'); setDateFrom(''); setDateTo(''); }}
                   accessibilityLabel="Maak alle filters skoon"
                 >
                   <Text style={[styles.clearFilters, { color: colors.primary }]}>Maak skoon</Text>
@@ -289,6 +303,14 @@ export function EventsScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={[styles.filterLabel, { color: colors.textSubtle }]}>DATUM</Text>
+            <DateRangePicker
+              from={dateFrom}
+              to={dateTo}
+              onChange={(nextFrom, nextTo) => { setDateFrom(nextFrom); setDateTo(nextTo); }}
+            />
+            </ScrollView>
 
             <TouchableOpacity
               style={[styles.applyBtn, { backgroundColor: colors.primary }]}
@@ -544,6 +566,9 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       padding: 20,
+      // Die kalender kan die blad hoog maak; hou dit binne die skerm en laat
+      // die inhoud eerder rol.
+      maxHeight: '88%',
     },
     sheetHandle: {
       width: 36,

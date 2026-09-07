@@ -6,6 +6,7 @@ import Link from 'next/link';
 import EventCard from '@/components/EventCard';
 import InfoModal from '@/components/InfoModal';
 import DateRangePicker from '@/components/DateRangePicker';
+import { toIsoRange } from '@/lib/date-range';
 import ExportCsvButton from '@/components/ExportCsvButton';
 import { canCreateEvents } from '@/lib/rbac';
 import { useCurrentUser } from '@/components/UserContext';
@@ -105,15 +106,9 @@ export default function EventsPage() {
             const now = new Date();
             const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59, 999);
 
-            // Van die oggend van die eerste dag tot die laaste minuut van die laaste
-            // dag, in die gebruiker se eie tydsone. Is net een dag gekies, is daardie
-            // dag self albei grense.
-            const filters = dateFrom
-                ? {
-                      from: new Date(`${dateFrom}T00:00:00.000`).toISOString(),
-                      to:   new Date(`${dateTo || dateFrom}T23:59:59.999`).toISOString(),
-                  }
-                : { to: endOfNextMonth.toISOString() };
+            // Van die oggend van die eerste dag tot die laaste oomblik van die
+            // laaste dag. Is net een dag gekies, is daardie dag self albei grense.
+            const filters = toIsoRange(dateFrom, dateTo) ?? { to: endOfNextMonth.toISOString() };
 
             const [eventsResult, rsvpsResult] = await Promise.all([
                 listEventsAction(filters),

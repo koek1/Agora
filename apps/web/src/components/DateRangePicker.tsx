@@ -2,43 +2,33 @@
 
 // Imports
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { CalendarRange, ChevronLeft, ChevronRight, X } from 'lucide-react';
-
-const MONTHS = [
-    'Januarie', 'Februarie', 'Maart', 'April', 'Mei', 'Junie',
-    'Julie', 'Augustus', 'September', 'Oktober', 'November', 'Desember',
-];
-
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Des'];
-
-const DAYS = ['So', 'Ma', 'Di', 'Wo', 'Do', 'Vr', 'Sa'];
+import { CalendarRange, ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
+import {
+    MONTHS,
+    DAYS,
+    dayKey,
+    todayKey as computeTodayKey,
+    yearOf,
+    monthOf,
+    formatDay,
+    formatLong,
+    formatRangeLabel,
+    isSingleDay,
+    selectDay as nextRange,
+    drawnRange,
+    monthGrid,
+    yearOptions,
+} from '@/lib/date-range';
 
 // Die paneel se breedte plus die spasie wat ons tussen die paneel en
 // die venster se rand wil hou wanneer ons besluit na watter kant dit oopmaak.
 const PANEL_WIDTH = 304;
 const EDGE_GAP    = 16;
 
-// Datums beweeg hier deur as 'yyyy-mm-dd'-sleutels, nooit as Date-objekte nie.
-// So bly alles in die gebruiker se eie kalenderdag en kan ons twee dae met 'n
-// gewone string-vergelyking rangskik -- geen tydsone-verskuiwing nie.
-function dayKey(year: number, month: number, day: number): string {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function formatDay(key: string, withYear: boolean): string {
-    const [y, m, d] = key.split('-').map(Number);
-    return withYear ? `${d} ${MONTHS_SHORT[m - 1]} ${y}` : `${d} ${MONTHS_SHORT[m - 1]}`;
-}
-
-function formatLong(key: string): string {
-    const [y, m, d] = key.split('-').map(Number);
-    return `${d} ${MONTHS[m - 1]} ${y}`;
-}
-
 export interface DateRangePickerProps {
     // Begin van die reeks as 'yyyy-mm-dd', of '' vir geen filter nie
     from: string;
-    // Einde van die reeks as 'yyyy-mm-dd'. Leeg terwyl net een dag gekies is
+    // Einde van die reeks as 'yyyy-mm-dd'. Gelyk aan `from` vir 'n enkel dag
     to: string;
     onChange: (from: string, to: string) => void;
 }
@@ -48,19 +38,24 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
     // Die dag waaroor die muis tans sweef, sodat die reeks al voorskou terwyl
     // die gebruiker die tweede dag soek.
     const [hoverKey, setHoverKey] = useState<string | null>(null);
+    // Die maand/jaar-wiele wat die dag-rooster vervang wanneer die gebruiker op
+    // die opskrif druk.
+    const [wheelsOpen, setWheelsOpen] = useState(false);
     // Die kieser sit gewoonlik heel regs in die filterry, waar 'n paneel wat na
     // regs oopmaak by die bladsy se rand sou uitsteek (die dashboard se <main>
     // rol dan horisontaal). Steek dit uit, haak ons die paneel se regterkant aan
     // die knoppie s'n vas sodat dit na links oopmaak en binne die bladsy bly.
     const [alignRight, setAlignRight] = useState(false);
-    const containerRef = useRef<HTMLDivElement>(null);
+    const containerRef  = useRef<HTMLDivElement>(null);
+    const monthItemRef  = useRef<HTMLButtonElement>(null);
+    const yearItemRef   = useRef<HTMLButtonElement>(null);
 
-    const today = useMemo(() => new Date(), []);
-    const todayKey = dayKey(today.getFullYear(), today.getMonth(), today.getDate());
+    const today    = useMemo(() => new Date(), []);
+    const todayKey = computeTodayKey(today);
 
     // Die kalender open op die maand van die gekose begin-datum, anders vandag s'n.
-    const [viewYear, setViewYear]   = useState(() => Number(from?.slice(0, 4)) || today.getFullYear());
-    const [viewMonth, setViewMonth] = useState(() => (from ? Number(from.slice(5, 7)) - 1 : today.getMonth()));
+    const [viewYear, setViewYear]   = useState(() => (from ? yearOf(from) : today.getFullYear()));
+    const [viewMonth, setViewMonth] = useState(() => (from ? monthOf(from) : today.getMonth()));
 
     useEffect(() => {
         if (!open || !containerRef.current) return;
@@ -71,6 +66,19 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
             left + PANEL_WIDTH + EDGE_GAP > window.innerWidth && right - PANEL_WIDTH >= EDGE_GAP,
         );
     }, [open]);
+
+    // Die wiele begin altyd toe wanneer die paneel oopgaan.
+    useEffect(() => {
+        if (!open) setWheelsOpen(false);
+    }, [open]);
+
+    // Spring dadelik na die gekose maand en jaar sodra die wiele oopmaak, sodat
+    // die gebruiker nooit eers hoef te rol om te sien waar hy is nie.
+    useEffect(() => {
+        if (!wheelsOpen) return;
+        monthItemRef.current?.scrollIntoView({ block: 'center', behavior: 'auto' });
+        yearItemRef.current?.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }, [wheelsOpen]);
 
     // Maak toe met 'n klik buite of met Escape.
     useEffect(() => {
@@ -93,9 +101,8 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
         };
     }, [open]);
 
-    const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
-    const daysInMonth  = new Date(viewYear, viewMonth + 1, 0).getDate();
-    const totalCells   = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+    const { firstWeekday, daysInMonth, totalCells } = monthGrid(viewYear, viewMonth);
+    const years = yearOptions(viewYear, today);
 
     function prevMonth() {
         if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
@@ -107,31 +114,9 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
         else setViewMonth((m) => m + 1);
     }
 
-    // 'n Enkel gekose dag word as begin EN einde gehou (from === to), sodat die
-    // dag self dadelik 'n volwaardige filter is en nie eers op 'n tweede klik
-    // wag nie. Daardie toestand bly oop vir uitbreiding.
-    const singleDay = Boolean(from) && from === to;
-
-    // Klik-gedrag:
-    //   niks gekies    -> die dag word begin en einde
-    //   een dag gekies -> 'n ander dag brei uit na 'n reeks (in enige volgorde
-    //                     gekies, ons rangskik hulle), dieselfde dag haal af
-    //   volle reeks    -> 'n punt weer druk haal daardie punt af en laat die
-    //                     ander een as enkeldag oor, enige ander dag begin oor
     function selectDay(key: string) {
-        if (singleDay) {
-            if (key === from) onChange('', '');
-            else if (key < from) onChange(key, from);
-            else onChange(from, key);
-            return;
-        }
-
-        if (from && to) {
-            if (key === from) { onChange(to, to);     return; }
-            if (key === to)   { onChange(from, from); return; }
-        }
-
-        onChange(key, key);
+        const next = nextRange(from, to, key);
+        onChange(next.from, next.to);
     }
 
     function clear(e: React.MouseEvent) {
@@ -140,19 +125,17 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
         setHoverKey(null);
     }
 
-    // Die reeks wat geteken moet word. Is net een dag gekies, wys ons die reeks
-    // wat sou ontstaan as die gebruiker op die dag onder die muis klik.
-    const previewKey = singleDay && hoverKey && hoverKey !== from ? hoverKey : null;
-    const rangeStart = previewKey && previewKey < from ? previewKey : from;
-    const rangeEnd   = previewKey ? (previewKey < from ? from : previewKey) : to;
-
+    const singleDay = isSingleDay(from, to);
+    const { from: rangeStart, to: rangeEnd } = drawnRange(from, to, hoverKey);
     const hasRange = Boolean(from);
+    const label    = formatRangeLabel(from, to, 'Filter datum');
 
-    const label = !from
-        ? 'Filter datum'
-        : !to || to === from
-            ? formatDay(from, true)
-            : `${formatDay(from, from.slice(0, 4) !== to.slice(0, 4))} – ${formatDay(to, true)}`;
+    const wheelItemClass = (selected: boolean) => [
+        'w-full px-3 py-2.5 rounded-lg text-sm text-left font-medium transition-colors cursor-pointer',
+        selected
+            ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
+            : 'text-[var(--color-text)] hover:bg-[var(--color-bg)]',
+    ].join(' ');
 
     return (
         <div ref={containerRef} className="relative">
@@ -201,7 +184,7 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
                         'bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-lg p-3',
                     ].join(' ')}
                 >
-                    {/* ── Maand-navigasie ── */}
+                    {/* ── Maand-navigasie. Die opskrif self maak die wiele oop ── */}
                     <div className="flex items-center justify-between mb-2">
                         <button
                             type="button"
@@ -211,9 +194,22 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
                         >
                             <ChevronLeft size={16} />
                         </button>
-                        <span className="text-sm font-semibold text-[var(--color-text)]">
+                        <button
+                            type="button"
+                            onClick={() => setWheelsOpen((w) => !w)}
+                            aria-expanded={wheelsOpen}
+                            aria-label="Kies maand en jaar"
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-semibold text-[var(--color-text)] hover:bg-[var(--color-bg)] transition-colors cursor-pointer"
+                        >
                             {MONTHS[viewMonth]} {viewYear}
-                        </span>
+                            <ChevronDown
+                                size={14}
+                                className={[
+                                    'text-[var(--color-text-subtle)] transition-transform duration-150',
+                                    wheelsOpen ? 'rotate-180' : '',
+                                ].join(' ')}
+                            />
+                        </button>
                         <button
                             type="button"
                             onClick={nextMonth}
@@ -224,85 +220,134 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-7 mb-1">
-                        {DAYS.map((d) => (
-                            <div key={d} className="py-1 text-center text-[11px] font-semibold text-[var(--color-text-subtle)]">
-                                {d}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* ── Dae ── */}
-                    <div className="grid grid-cols-7" onMouseLeave={() => setHoverKey(null)}>
-                        {Array.from({ length: totalCells }).map((_, cellIdx) => {
-                            const day = cellIdx - firstWeekday + 1;
-                            if (day < 1 || day > daysInMonth) {
-                                return <div key={cellIdx} className="h-9" />;
-                            }
-
-                            const key      = dayKey(viewYear, viewMonth, day);
-                            const isStart  = key === rangeStart;
-                            const isEnd    = Boolean(rangeEnd) && key === rangeEnd;
-                            // Die dae tussen die twee punte kry die ligter blou balk,
-                            // die begin- en einddag self kry die donkerder blou blokkie.
-                            const isBetween = Boolean(rangeStart && rangeEnd && key > rangeStart && key < rangeEnd);
-                            const inRange   = isStart || isEnd || isBetween;
-
-                            return (
-                                <div
-                                    key={cellIdx}
-                                    onMouseEnter={() => setHoverKey(key)}
-                                    className={[
-                                        'h-9 flex items-center justify-center',
-                                        inRange ? 'bg-[var(--color-primary-soft)]' : '',
-                                        // Rond die balk se punte af sodat dit soos een streep lyk
-                                        isStart || (inRange && day === 1) ? 'rounded-l-full' : '',
-                                        isEnd || (inRange && day === daysInMonth) ? 'rounded-r-full' : '',
-                                    ].join(' ')}
-                                >
-                                    <button
-                                        type="button"
-                                        onClick={() => selectDay(key)}
-                                        aria-label={formatLong(key)}
-                                        aria-pressed={inRange}
-                                        className={[
-                                            'w-9 h-9 flex items-center justify-center text-sm rounded-full transition-colors cursor-pointer',
-                                            isStart || isEnd
-                                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] font-semibold'
-                                                : isBetween
-                                                    ? 'text-[var(--color-text)] hover:bg-[var(--color-primary-soft-hover)]'
-                                                    : 'text-[var(--color-text)] hover:bg-[var(--color-bg)]',
-                                            !inRange && key === todayKey
-                                                ? 'ring-1 ring-inset ring-[var(--color-primary)] font-semibold'
-                                                : '',
-                                        ].join(' ')}
-                                    >
-                                        {day}
-                                    </button>
+                    {wheelsOpen ? (
+                        /* ── Twee rolwiele: maand links, jaar regs ── */
+                        <>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="max-h-64 overflow-y-auto p-1 rounded-xl border border-[var(--color-border)]">
+                                    {MONTHS.map((name, index) => {
+                                        const selected = index === viewMonth;
+                                        return (
+                                            <button
+                                                key={name}
+                                                ref={selected ? monthItemRef : undefined}
+                                                type="button"
+                                                onClick={() => setViewMonth(index)}
+                                                className={wheelItemClass(selected)}
+                                            >
+                                                {name}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* ── Voetstuk ── */}
-                    <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-[var(--color-border)]">
-                        <span className="text-xs text-[var(--color-text-subtle)]">
-                            {!from
-                                ? 'Kies ’n dag'
-                                : singleDay
-                                    ? 'Druk ’n tweede dag vir ’n reeks, of dieselfde dag om af te haal'
-                                    : `${formatDay(from, false)} – ${formatDay(to, true)}`}
-                        </span>
-                        {hasRange && (
+                                <div className="max-h-64 overflow-y-auto p-1 rounded-xl border border-[var(--color-border)]">
+                                    {years.map((year) => {
+                                        const selected = year === viewYear;
+                                        return (
+                                            <button
+                                                key={year}
+                                                ref={selected ? yearItemRef : undefined}
+                                                type="button"
+                                                onClick={() => setViewYear(year)}
+                                                className={wheelItemClass(selected)}
+                                            >
+                                                {year}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                             <button
                                 type="button"
-                                onClick={() => { onChange('', ''); setHoverKey(null); }}
-                                className="text-xs text-[var(--color-primary)] hover:underline shrink-0 cursor-pointer"
+                                onClick={() => setWheelsOpen(false)}
+                                className="w-full mt-2 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-text)] text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
                             >
-                                Vee uit
+                                Klaar
                             </button>
-                        )}
-                    </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-7 mb-1">
+                                {DAYS.map((d) => (
+                                    <div key={d} className="py-1 text-center text-[11px] font-semibold text-[var(--color-text-subtle)]">
+                                        {d}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* ── Dae ── */}
+                            <div className="grid grid-cols-7" onMouseLeave={() => setHoverKey(null)}>
+                                {Array.from({ length: totalCells }).map((_, cellIdx) => {
+                                    const day = cellIdx - firstWeekday + 1;
+                                    if (day < 1 || day > daysInMonth) {
+                                        return <div key={cellIdx} className="h-9" />;
+                                    }
+
+                                    const key      = dayKey(viewYear, viewMonth, day);
+                                    const isStart  = key === rangeStart;
+                                    const isEnd    = Boolean(rangeEnd) && key === rangeEnd;
+                                    // Die dae tussen die twee punte kry die ligter blou balk,
+                                    // die begin- en einddag self kry die donkerder blou blokkie.
+                                    const isBetween = Boolean(rangeStart && rangeEnd && key > rangeStart && key < rangeEnd);
+                                    const inRange   = isStart || isEnd || isBetween;
+
+                                    return (
+                                        <div
+                                            key={cellIdx}
+                                            onMouseEnter={() => setHoverKey(key)}
+                                            className={[
+                                                'h-9 flex items-center justify-center',
+                                                inRange ? 'bg-[var(--color-primary-soft)]' : '',
+                                                // Rond die balk se punte af sodat dit soos een streep lyk
+                                                isStart || (inRange && day === 1) ? 'rounded-l-full' : '',
+                                                isEnd || (inRange && day === daysInMonth) ? 'rounded-r-full' : '',
+                                            ].join(' ')}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => selectDay(key)}
+                                                aria-label={formatLong(key)}
+                                                aria-pressed={inRange}
+                                                className={[
+                                                    'w-9 h-9 flex items-center justify-center text-sm rounded-full transition-colors cursor-pointer',
+                                                    isStart || isEnd
+                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] font-semibold'
+                                                        : isBetween
+                                                            ? 'text-[var(--color-text)] hover:bg-[var(--color-primary-soft-hover)]'
+                                                            : 'text-[var(--color-text)] hover:bg-[var(--color-bg)]',
+                                                    !inRange && key === todayKey
+                                                        ? 'ring-1 ring-inset ring-[var(--color-primary)] font-semibold'
+                                                        : '',
+                                                ].join(' ')}
+                                            >
+                                                {day}
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ── Voetstuk ── */}
+                            <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-[var(--color-border)]">
+                                <span className="text-xs text-[var(--color-text-subtle)]">
+                                    {!from
+                                        ? 'Kies ’n dag'
+                                        : singleDay
+                                            ? 'Druk ’n tweede dag vir ’n reeks, of dieselfde dag om af te haal'
+                                            : `${formatDay(from, false)} – ${formatDay(to, true)}`}
+                                </span>
+                                {hasRange && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { onChange('', ''); setHoverKey(null); }}
+                                        className="text-xs text-[var(--color-primary)] hover:underline shrink-0 cursor-pointer"
+                                    >
+                                        Vee uit
+                                    </button>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
         </div>
