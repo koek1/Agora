@@ -58,7 +58,7 @@ export default function AddressAutocompleteInput({ initialAddress, onSelect, err
         setIsOpen(false);
         setIsResolving(true);
         setPickError(null);
-        const result = await getPlaceDetailsAction(suggestion.description);
+        const result = await getPlaceDetailsAction(suggestion.description, suggestion.lat, suggestion.lon);
         setIsResolving(false);
         if (result.details) {
             skipNextSearchRef.current = true;

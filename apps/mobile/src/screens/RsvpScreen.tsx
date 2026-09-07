@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -146,6 +147,12 @@ export function RsvpScreen() {
     return { day: d.getDate(), month: MONTHS_SHORT_AF[d.getMonth()] };
   }
 
+  function handleOpenDirections(lat: number, lon: number) {
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`).catch(() => {
+      Alert.alert('Wegwysers', 'Kon nie Kaarte oopmaak nie.');
+    });
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScreenHeader
@@ -211,7 +218,10 @@ export function RsvpScreen() {
                   </View>
                   <View style={styles.rsvpInfo}>
                     <Text style={styles.rsvpTitle} numberOfLines={1}>{event.title}</Text>
-                    <Text style={styles.rsvpMeta} numberOfLines={1}> {event.location}</Text>
+                    <Text style={styles.rsvpMeta} numberOfLines={1}>{event.location}</Text>
+                    {event.address ? (
+                      <Text style={styles.rsvpMeta} numberOfLines={1}>{event.address}</Text>
+                    ) : null}
                   </View>
                   <View style={[styles.rsvpBadge, { backgroundColor: cfg.bg }]}>
                     <Feather name={cfg.icon} size={12} color={cfg.text} />
@@ -233,6 +243,7 @@ export function RsvpScreen() {
                     <View style={styles.ticketCard}>
                       <Text style={styles.ticketEventTitle}>{event.title}</Text>
                       <Text style={styles.ticketMeta}>{day} {month} · {event.location}</Text>
+                      {event.address ? <Text style={styles.ticketMeta}>{event.address}</Text> : null}
                       <View style={styles.qrBox}>
                         {qrLoadingId === _id ? (
                           <ActivityIndicator color={colors.primary} />
@@ -268,6 +279,17 @@ export function RsvpScreen() {
                     >
                       <Feather name="download" size={13} color={colors.primary} />
                       <Text style={styles.qrBtnText}>Stoor Kaartjie</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {showQr && event.lat != null && event.lon != null && (
+                    <TouchableOpacity
+                      style={styles.qrBtn}
+                      onPress={() => handleOpenDirections(event.lat!, event.lon!)}
+                      accessibilityLabel="Kry aanwysings"
+                    >
+                      <Feather name="navigation" size={13} color={colors.primary} />
+                      <Text style={styles.qrBtnText}>Aanwysings</Text>
                     </TouchableOpacity>
                   )}
 

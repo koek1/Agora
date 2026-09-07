@@ -23,9 +23,9 @@ export interface GetPlaceDetailsResult {
     error?:   string;
 }
 
-export async function getPlaceDetailsAction(address: string): Promise<GetPlaceDetailsResult> {
+export async function getPlaceDetailsAction(address: string, lat?: number, lon?: number): Promise<GetPlaceDetailsResult> {
     try {
-        const details = await getPlaceDetails(address);
+        const details = await getPlaceDetails(address, lat, lon);
         return { details };
     } catch (err) {
         return { error: err instanceof Error ? err.message : 'Kon nie adresbesonderhede kry nie.' };

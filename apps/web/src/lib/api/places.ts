@@ -6,6 +6,8 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 export interface PlaceSuggestion {
     placeId:     string;
     description: string;
+    lat:         number;
+    lon:         number;
 }
 
 export interface PlaceDetails {
@@ -40,6 +42,7 @@ export async function searchPlaces(input: string): Promise<PlaceSuggestion[]> {
     return apiFetch<PlaceSuggestion[]>(`/api/v1/places/autocomplete?input=${encodeURIComponent(input)}`);
 }
 
-export async function getPlaceDetails(address: string): Promise<PlaceDetails> {
-    return apiFetch<PlaceDetails>(`/api/v1/places/details?address=${encodeURIComponent(address)}`);
+export async function getPlaceDetails(address: string, lat?: number, lon?: number): Promise<PlaceDetails> {
+    const bias = lat !== undefined && lon !== undefined ? `&lat=${lat}&lon=${lon}` : '';
+    return apiFetch<PlaceDetails>(`/api/v1/places/details?address=${encodeURIComponent(address)}${bias}`);
 }

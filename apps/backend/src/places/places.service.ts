@@ -7,6 +7,8 @@ import { PlaceDetailsDto } from './dto/place-details.dto';
 interface GeoapifyAutocompleteResult {
     place_id: string;
     formatted: string;
+    lat: number;
+    lon: number;
 }
 
 interface GeoapifyAutocompleteResponse {
@@ -37,12 +39,15 @@ export class PlacesService {
         return data.results.map((result) => ({
             placeId: result.place_id,
             description: result.formatted,
+            lat: result.lat,
+            lon: result.lon,
         }));
     }
 
-    async getDetails(address: string): Promise<PlaceDetailsDto> {
+    async getDetails(address: string, lat?: number, lon?: number): Promise<PlaceDetailsDto> {
         const apiKey = this.configService.get<string>('geoapify.apiKey');
-        const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&format=json&apiKey=${apiKey}`;
+        const bias = lat !== undefined && lon !== undefined ? `&bias=proximity:${lon},${lat}` : '';
+        const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}&format=json${bias}&apiKey=${apiKey}`;
         const response = await fetch(url);
         const data = await response.json() as GeoapifySearchResponse;
 
