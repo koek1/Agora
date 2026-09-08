@@ -30,6 +30,7 @@
     "android": {
       "package": "ac.akademia.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/agora-icon.png",
         "backgroundColor": "#1E3A5F"
       },
       "permissions": [
