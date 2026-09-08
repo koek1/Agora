@@ -12,6 +12,8 @@ import type { EventType } from '@/lib/api/events';
 import EventPredictionPanel from '@/components/EventPredictionPanel';
 import FinanceAssigneeSelect from '@/components/FinanceAssigneeSelect';
 import TimeRangeInput from '@/components/TimeRangeInput';
+import AddressAutocompleteInput from '@/components/AddressAutocompleteInput';
+import type { PlaceDetails } from '@/lib/api/places';
 
 const STUDY_CENTERS = [
     'Centurion - Leriba',
@@ -28,6 +30,10 @@ export interface EventFormValues {
     time:               string;
     endTime:            string;
     location:           string;
+    address:            string;
+    placeId:            string;
+    lat:                number | null;
+    lon:                number | null;
     type:               EventType;
     intendedAttendance: AttendanceRole;
     capacity:           string;
@@ -80,6 +86,7 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
             e.endTime = 'Eindtyd moet na begintyd wees';
         }
         if (!formData.location.trim()) e.location = 'Ligging is verpligtend';
+        if (mode === 'create' && !formData.placeId) e.address = 'Kies \'n geldige adres uit die soeklys';
         if (!formData.capacity || Number(formData.capacity) <= 0)
             e.capacity = 'Geldige kapasiteit is verpligtend';
         if (formData.budget === '' || Number(formData.budget) < 0)
@@ -108,6 +115,10 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
                 date:               `${formData.date}T${formData.time}`,
                 endDate:            `${formData.date}T${formData.endTime}`,
                 location:           formData.location,
+                address:            formData.address,
+                placeId:            formData.placeId || undefined,
+                lat:                formData.lat ?? undefined,
+                lon:                formData.lon ?? undefined,
                 maxCapacity:        Number(formData.capacity),
                 budget:             Number(formData.budget),
                 intendedAttendance: formData.intendedAttendance,
@@ -222,7 +233,7 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
                     </label>
                     <input
                         type="text"
-                        placeholder="Saal, gebou of adres..."
+                        placeholder="Saal, gebou, ens..."
                         value={formData.location}
                         onChange={(e) => handleChange('location', e.target.value)}
                         className={inputClass('location')}
@@ -230,6 +241,26 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
                     {errors.location && (
                         <p className="text-xs text-[var(--color-red)] mt-1">{errors.location}</p>
                     )}
+                </div>
+
+                <div>
+                    <label className="text-xs font-medium text-[var(--color-text-subtle)] block mb-1.5">
+                        Adres
+                    </label>
+                    <AddressAutocompleteInput
+                        initialAddress={formData.address}
+                        onSelect={(details) => {
+                            setFormData((prev) => ({
+                                ...prev,
+                                placeId: details?.placeId ?? '',
+                                address: details?.address ?? prev.address,
+                                lat: details?.lat ?? null,
+                                lon: details?.lon ?? null,
+                            }));
+                            if (errors.address) setErrors((prev) => ({ ...prev, address: '' }));
+                        }}
+                        error={errors.address}
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

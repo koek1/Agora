@@ -20,6 +20,8 @@ import { canViewBudget, canManageCheckIns } from '../lib/rbac';
 import { safeGoBack } from '../lib/navigation';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { getEvent, createEvent, type EventResponse } from '../api/events';
+import { AddressAutocompleteInput } from '../components/AddressAutoCompleteInput';
+import type { PlaceDetails } from '../api/places';
 import { createRsvp } from '../api/rsvp';
 import { getDraftPrediction, getPrediction } from '../api/analytics';
 import type { PredictionResult } from '../api/analytics';
@@ -261,6 +263,7 @@ export function EventDetailScreen() {
             colors={colors}
           />
           <DetailRow label="Lokaal" value={event.location} colors={colors} />
+          {event.address ? <DetailRow label="Adres" value={event.address} colors={colors} /> : null}
           <DetailRow label="Tipe" value={TYPE_LABELS[event.type]} colors={colors} />
           <DetailRow label="Kapasiteit" value={`${event.confirmedAttendees} / ${event.maxCapacity} (${fillPct}%)`} colors={colors} />
           {event.sellsTickets && (
@@ -358,6 +361,7 @@ function CreateEventForm({
   const [startMinute, setStartMinute] = useState('');
   const [endHour, setEndHour] = useState('');
   const [endMinute, setEndMinute] = useState('');
+  const [placeDetails, setPlaceDetails] = useState<PlaceDetails | null>(null);
   const [location, setLocation] = useState('');
   const [maxCapacity, setMaxCapacity] = useState('');
   const [budget, setBudget] = useState('');
@@ -433,6 +437,11 @@ function CreateEventForm({
       return;
     }
 
+    if (!placeDetails) {
+      setError('Kies \'n geldige adres uit die soeklys.');
+      return;
+    }
+
     if (!startHour.trim() || !startMinute.trim()) {
       setError('Vul asseblief die begintyd in.');
       return;
@@ -499,6 +508,10 @@ function CreateEventForm({
         date: startDate.toISOString(),
         endDate,
         location: location.trim(),
+        address: placeDetails.address,
+        placeId: placeDetails.placeId,
+        lat: placeDetails.lat,
+        lon: placeDetails.lon,
         maxCapacity: cap,
         budget: budgetNum,
         sellsTickets,
@@ -650,6 +663,12 @@ function CreateEventForm({
             onChangeText={setLocation}
             editable={!isSubmitting}
             returnKeyType="next"
+          />
+
+          <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Adres *</Text>
+          <AddressAutocompleteInput
+            onSelect={setPlaceDetails}
+            editable={!isSubmitting}
           />
 
           <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Kapasiteit *</Text>

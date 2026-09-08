@@ -16,6 +16,10 @@ export class EventResponseDto {
     date!: Date;
     endDate?: Date;
     location!: string;
+    address!: string;
+    placeId!: string;
+    lat!: number | null;
+    lon!: number | null;
     maxCapacity!: number;
     budget!: number;
     createdBy!: string;
@@ -40,6 +44,10 @@ export class EventResponseDto {
             date:                       event.date,
             endDate:                    event.endDate,
             location:                   event.location,
+            address:                    event.address,
+            placeId:                    event.placeId,
+            lat:                        event.lat,
+            lon:                        event.lon,
             maxCapacity:                event.maxCapacity,
             budget:                     event.budget ?? 0,
             createdBy:                  event.createdBy.toString(),

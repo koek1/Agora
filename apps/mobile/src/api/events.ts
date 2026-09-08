@@ -9,6 +9,10 @@ export interface EventResponse {
   date: string;
   endDate?: string;
   location: string;
+  address: string;
+  placeId: string;
+  lat: number | null;
+  lon: number | null;
   maxCapacity: number;
   budget: number;
   createdBy: string;
@@ -31,6 +35,10 @@ export interface CreateEventPayload {
   date: string;
   endDate?: string;
   location: string;
+  address: string;
+  placeId?: string;
+  lat?: number;
+  lon?: number;
   maxCapacity: number;
   budget?: number;
   photographers?: string[];

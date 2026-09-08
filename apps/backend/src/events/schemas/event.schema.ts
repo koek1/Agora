@@ -24,6 +24,18 @@ export class Event {
     @Prop ({ required: true, trim: true})
     location!: string;
 
+    @Prop ({ required: false, trim: true, default: ''})
+    address!: string;
+
+    @Prop ({ required: false, trim: true, default: ''})
+    placeId!: string;
+
+    @Prop ({ required: false, type: Number, default: null})
+    lat!: number | null;
+
+    @Prop ({ required: false, type: Number, default: null})
+    lon!: number | null;
+
     @Prop ({ required: true })
     maxCapacity!: number;
 
