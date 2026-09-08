@@ -34,7 +34,7 @@ export class EventsService {
             await this.assertValidAssignee(dto.assignedTo);
         }
 
-        const place = await this.resolvePlace(dto.address, dto.placeId, dto.lat, dto.lon);
+        const place = await this.resolvePlace(dto.address, dto.lat, dto.lon);
 
         const created = new this.eventModel({
             ...dto,
@@ -50,27 +50,22 @@ export class EventsService {
         return created.save();
     }
 
-    // Los die plek op sonder om Geoapify twee keer te vra vir dieselfde adres: as die
-    // frontend reeds /places/details geroep het (placeId + lat/lon teenwoordig), vertrou
-    // dit direk. Geokodering is 'n verrykings-stap, nie 'n harde vereiste nie -- as
-    // Geoapify af is of kwota op is, moet funksie-skepping/-opdatering steeds deurgaan
-    // met net die rou adres-string.
+    // Herverifieer die adres bediener-kant teen Geoapify -- 'n kliënt se placeId/lat/lon
+    // word nooit vertrou nie. Geokodering is 'n verrykings-stap, nie 'n harde vereiste
+    // nie -- as Geoapify af is of kwota op is, moet funksie-skepping/-opdatering steeds
+    // deurgaan met net die rou adres-string.
     private async resolvePlace(
         address: string,
-        placeId?: string,
         lat?: number,
         lon?: number,
     ): Promise<PlaceDetailsDto | null> {
-        if (placeId && lat !== undefined && lon !== undefined) {
-            return { placeId, address, lat, lon };
-        }
-
         try {
             return await this.placesService.getDetails(address, lat, lon);
         } catch {
             return null;
         }
     }
+
 
     async findAll(
         viewerRole: Role,
@@ -274,7 +269,7 @@ export class EventsService {
         if (endDate)       event.endDate    = new Date(endDate);
         if (dto.assignedTo) event.assignedTo = new Types.ObjectId(dto.assignedTo);
         if (address) {
-            const place = await this.resolvePlace(address, placeId, lat, lon);
+            const place = await this.resolvePlace(address, lat, lon);
             event.address = place?.address ?? address;
             event.placeId = place?.placeId ?? event.placeId;
             event.lat     = place?.lat     ?? event.lat;

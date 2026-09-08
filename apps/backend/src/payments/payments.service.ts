@@ -7,7 +7,7 @@ import { createHash } from "crypto";
 import { v4 as uuidv4 } from 'uuid';
 import { Payment, PaymentDocument, PaymentStatus } from './schemas/payment.schema';
 import { EventsService } from "../events/events.service";
-import { RsvpService } from "../rsvp/rsvp.service";
+import { DuplicateTicketException, RsvpService } from "../rsvp/rsvp.service";
 import { UsersService } from "../users/users.service";
 import { PayfastNotifyDto, PayfastNotifyResultDto } from "./dto/payfast-notify.dto";
 import { InitiatePaymentResponseDto } from "./dto/initiate-payment-response.dto";
@@ -155,7 +155,7 @@ export class PaymentsService {
                 payment._id.toString(),
             );
         } catch (err) {
-            if (err instanceof ConflictException || this.isDuplicateTicketError(err)) {
+            if (err instanceof DuplicateTicketException || this.isDuplicateTicketError(err)) {
                 // Die gebruiker het reeds 'n kaartjie vir hierdie geleentheid, uit 'n
                 // ander, aparte betaling (bv. 'n PayFast ITN-herhaling vir 'n ou
                 // poging wat eers nou deur handtekening-verifikasie kom). Geen nuwe
@@ -164,6 +164,10 @@ export class PaymentsService {
                 await this.eventsService.incrementTicketsAvailable(payment.event.toString());
                 return { status: PaymentStatus.VOLTOOI };
             }
+            
+            await this.eventsService.incrementTicketsAvailable(payment.event.toString());
+            payment.status = PaymentStatus.MISLUK;
+            await payment.save();
             throw err;
         }
 

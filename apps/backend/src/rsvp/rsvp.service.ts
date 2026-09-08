@@ -23,6 +23,12 @@ export interface ScanResponse {
 // wanneer geen END DATE gegee was nie
 const EVENT_GRACE_PERIOD_MS = 3 * 60 * 60 * 1000;
 
+export class DuplicateTicketException extends ConflictException {
+    constructor() {
+        super("Jy het reeds 'n kaartjie vir hierdie geleentheid");
+    }
+}
+
 @Injectable()
 export class RsvpService {
     constructor(
@@ -95,7 +101,7 @@ export class RsvpService {
         .findOne({ event: eventId, user: userId })
         .exec();
         if (existing && existing.status !== RsvpStatus.GEKANSELLEER) {
-            throw new ConflictException("Jy het reeds 'n kaartjie vir hierdie geleentheid");
+            throw new DuplicateTicketException();
         }
 
         await this.eventsService.incrementConfirmedAttendees(eventId);
