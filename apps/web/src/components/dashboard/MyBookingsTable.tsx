@@ -61,6 +61,12 @@ export default function MyBookingsTable({ data, attendeeName }: { data: MyRsvp[]
                                     eventTitle={r.event?.title ?? 'Geleentheid'}
                                     eventDate={r.event ? formatDateShort(r.event.date) : ''}
                                     eventLocation={r.event?.location ?? ''}
+                                    eventAddress={r.event?.address ?? ''}
+                                    mapsUrl={
+                                        r.event?.lat != null && r.event?.lon != null
+                                            ? `https://www.google.com/maps/search/?api=1&query=${r.event.lat},${r.event.lon}`
+                                            : null
+                                    }
                                     attendeeName={attendeeName}
                                     disabled={r.status === 'GEKANSELLEER'}
                                 />

@@ -96,7 +96,7 @@ export class MicrosoftCalendarService {
             body: JSON.stringify({
                 subject: event.title,
                 body: { contentType: 'Text', content: event.description },
-                location: { displayName: event.location },
+                location: { displayName: event.address || event.location },
                 start: { dateTime: start.toISOString(), timeZone: 'UTC' },
                 end: { dateTime: end.toISOString(), timeZone: 'UTC' },
             }),

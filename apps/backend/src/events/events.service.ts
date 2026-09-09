@@ -12,6 +12,8 @@ import { visibleAttendanceRoles } from '../common/rbac/event-visibility';
 import { RabbitMQService } from '../messaging/rabbitmq.service';
 import { EXCHANGES, ROUTING_KEYS, PhotographerAssignedEvent } from '../messaging/events.constants';
 import { UsersService } from '../users/users.service';
+import { PlacesService } from '../places/places.service';
+import { PlaceDetailsDto } from '../places/dto/place-details.dto';
 
 @Injectable()
 export class EventsService {
@@ -19,6 +21,7 @@ export class EventsService {
         @InjectModel(Event.name) private readonly eventModel: Model<EventDocument>,
         private readonly rabbitMQService: RabbitMQService,
         private readonly usersService: UsersService,
+        private readonly placesService: PlacesService,
     ) {}
 
     async create(dto: CreateEventDto, creatorId: string): Promise<EventDocument> {
@@ -31,15 +34,38 @@ export class EventsService {
             await this.assertValidAssignee(dto.assignedTo);
         }
 
+        const place = await this.resolvePlace(dto.address, dto.lat, dto.lon);
+
         const created = new this.eventModel({
             ...dto,
             date:       start,
             endDate:    end,
+            address:    place?.address ?? dto.address,
+            placeId:    place?.placeId ?? '',
+            lat:        place?.lat ?? null,
+            lon:        place?.lon ?? null,
             createdBy:  creatorId,
             assignedTo: dto.assignedTo ? new Types.ObjectId(dto.assignedTo) : null,
         });
         return created.save();
     }
+
+    // Herverifieer die adres bediener-kant teen Geoapify -- 'n kliënt se placeId/lat/lon
+    // word nooit vertrou nie. Geokodering is 'n verrykings-stap, nie 'n harde vereiste
+    // nie -- as Geoapify af is of kwota op is, moet funksie-skepping/-opdatering steeds
+    // deurgaan met net die rou adres-string.
+    private async resolvePlace(
+        address: string,
+        lat?: number,
+        lon?: number,
+    ): Promise<PlaceDetailsDto | null> {
+        try {
+            return await this.placesService.getDetails(address, lat, lon);
+        } catch {
+            return null;
+        }
+    }
+
 
     async findAll(
         viewerRole: Role,
@@ -237,11 +263,18 @@ export class EventsService {
             await this.assertValidAssignee(dto.assignedTo);
         }
 
-        const { date, endDate, ...rest } = dto;
+        const { date, endDate, address, placeId, lat, lon, ...rest } = dto;
         Object.assign(event, rest);
         if (date)          event.date       = new Date(date);
         if (endDate)       event.endDate    = new Date(endDate);
         if (dto.assignedTo) event.assignedTo = new Types.ObjectId(dto.assignedTo);
+        if (address) {
+            const place = await this.resolvePlace(address, lat, lon);
+            event.address = place?.address ?? address;
+            event.placeId = place?.placeId ?? event.placeId;
+            event.lat     = place?.lat     ?? event.lat;
+            event.lon     = place?.lon     ?? event.lon;
+        }
 
         this.assertEndAfterStart(event.date, event.endDate);
         this.assertTicketsWithinCapacity(event.sellsTickets, event.ticketsAvailable, event.maxCapacity);

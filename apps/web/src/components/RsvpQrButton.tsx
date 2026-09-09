@@ -10,11 +10,13 @@ interface RsvpQrButtonProps {
     eventTitle: string;
     eventDate: string;
     eventLocation: string;
+    eventAddress: string;
+    mapsUrl: string | null;
     attendeeName: string;
     disabled?: boolean;
 }
 
-export default function RsvpQrButton({ rsvpId, eventTitle, eventDate, eventLocation, attendeeName, disabled }: RsvpQrButtonProps) {
+export default function RsvpQrButton({ rsvpId, eventTitle, eventDate, eventLocation, eventAddress, mapsUrl, attendeeName, disabled }: RsvpQrButtonProps) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [qrDataUri, setQrDataUri] = useState<string | null>(null);
@@ -102,6 +104,9 @@ export default function RsvpQrButton({ rsvpId, eventTitle, eventDate, eventLocat
                                         <p className="text-sm font-bold">{eventTitle}</p>
                                         <p className="text-xs text-gray-600">{eventDate}</p>
                                         <p className="text-xs text-gray-600">{eventLocation}</p>
+                                        {eventAddress && (
+                                            <p className="text-xs text-gray-600">{eventAddress}</p>
+                                        )}
                                     </div>
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
@@ -116,6 +121,16 @@ export default function RsvpQrButton({ rsvpId, eventTitle, eventDate, eventLocat
                                 <p className="text-xs text-[var(--color-text-subtle)] text-center">
                                     Wys hierdie QR-kode by die deur
                                 </p>
+                                {mapsUrl && (
+                                    <a
+                                        href={mapsUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs font-medium text-[var(--color-primary)] hover:underline"
+                                    >
+                                        Kry aanwysings
+                                    </a>
+                                )}
                                 <button
                                     onClick={handleDownload}
                                     disabled={downloading}

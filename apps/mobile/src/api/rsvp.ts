@@ -8,6 +8,9 @@ export interface PopulatedEvent {
     description: string;
     date: string;
     location: string;
+    address: string;
+    lat: number | null;
+    lon: number | null;
     maxCapacity: number;
     confirmedAttendees: number;
     createdAt: string;
