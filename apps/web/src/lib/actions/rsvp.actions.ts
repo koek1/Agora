@@ -51,9 +51,9 @@ export interface GetMyRsvpsResult {
     error?:  string;
 }
 
-export async function getMyRsvpsAction(): Promise<GetMyRsvpsResult> {
+export async function getMyRsvpsAction(dateFrom?: string, dateTo?: string): Promise<GetMyRsvpsResult> {
     try {
-        const rsvps = await getMyRsvps();
+        const rsvps = await getMyRsvps(dateFrom, dateTo);
         return { rsvps };
     } catch (err) {
         return { error: err instanceof Error ? err.message : 'Kon nie jou RSVPs laai nie.' };

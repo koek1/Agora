@@ -9,7 +9,9 @@ import { canCreateEvents } from '@/lib/rbac';
 import { createEventAction, updateEventAction } from '@/lib/actions/event.actions';
 import { ATTENDANCE_OPTIONS, type AttendanceRole } from '@/lib/attendance';
 import type { EventType } from '@/lib/api/events';
+import DatePicker from '@/components/DatePicker';
 import EventPredictionPanel from '@/components/EventPredictionPanel';
+import EventPlannerSandbox from '@/components/EventPlannerSandbox';
 import FinanceAssigneeSelect from '@/components/FinanceAssigneeSelect';
 import TimeRangeInput from '@/components/TimeRangeInput';
 
@@ -146,6 +148,11 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
         if (errors.budget) setErrors((prev) => ({ ...prev, budget: '' }));
     }
 
+    function handleApplySandbox(date: string, capacity: number, budget: number) {
+        setFormData((prev) => ({ ...prev, date, capacity: String(capacity), budget: String(budget) }));
+        setErrors((prev) => ({ ...prev, date: '', capacity: '', budget: '' }));
+    }
+
     const inputClass = (field: string) =>
         [
             'w-full bg-[var(--color-bg)] border rounded-xl px-4 py-2.5 text-sm text-[var(--color-text)]',
@@ -156,7 +163,7 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
         ].join(' ');
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-start">
             <form
                 onSubmit={handleSubmit}
                 className="lg:col-span-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-5"
@@ -196,11 +203,10 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
                     <label className="text-xs font-medium text-[var(--color-text-subtle)] block mb-1.5">
                         Datum
                     </label>
-                    <input
-                        type="date"
+                    <DatePicker
                         value={formData.date}
-                        onChange={(e) => handleChange('date', e.target.value)}
-                        className={inputClass('date')}
+                        onChange={(date) => handleChange('date', date)}
+                        placeholder="Kies datum"
                     />
                     {errors.date && (
                         <p className="text-xs text-[var(--color-red)] mt-1">{errors.date}</p>
@@ -408,11 +414,16 @@ export default function EventForm({ mode, eventId, initialValues }: EventFormPro
                 </button>
             </form>
 
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 xl:col-span-2 space-y-6 xl:space-y-0 xl:grid xl:grid-cols-2 xl:gap-6 xl:items-start">
                 <EventPredictionPanel
                     date={formData.date}
                     capacity={formData.capacity}
                     onApplyBudget={handleApplyBudget}
+                />
+                <EventPlannerSandbox
+                    initialDate={formData.date}
+                    initialCapacity={formData.capacity}
+                    onApplyToForm={handleApplySandbox}
                 />
             </div>
         </div>

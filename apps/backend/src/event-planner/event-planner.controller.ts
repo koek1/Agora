@@ -1,6 +1,6 @@
 // ========== Imports: ==========
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -19,6 +19,7 @@ export class EventPlannerController {
     @Post('preview')
     @UseGuards(RolesGuard, ThrottlerGuard)
     @Throttle({ polling: { limit: 60, ttl: 60000 } })
+    @SkipThrottle({ default: true })
     @Roles(Role.ADMIN, Role.DOSENT)
     async preview(
         @Body() dto: PreviewEventDto,
