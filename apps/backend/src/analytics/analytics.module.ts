@@ -25,6 +25,6 @@ import { User, UserSchema } from '../users/schemas/user.schema';
     ],
     providers: [LstmService, AnalyticsService],
     controllers: [AnalyticsController],
-    exports: [],
+    exports: [LstmService],
 })
 export class AnalyticsModule {}

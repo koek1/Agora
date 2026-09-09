@@ -180,7 +180,6 @@ export interface PredictionResult {
     reasoning:           string[];
 }
 
-// Thrown specifically on a 503, so callers can show a distinct "unavailable" state.
 export class PredictionUnavailableError extends Error {}
 
 export async function getAttendancePrediction(eventId: string): Promise<PredictionResult> {

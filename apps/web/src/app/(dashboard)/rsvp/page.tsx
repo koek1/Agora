@@ -2,8 +2,6 @@ import { AlertCircle } from 'lucide-react';
 import { getMyRsvps } from '@/lib/api/rsvp';
 import { getSession } from '@/lib/session';
 import MyRsvpList from '@/components/MyRsvpList';
-import AutoRefresh from '@/components/AutoRefresh';
-import RsvpDateFilter from '@/components/RsvpDateFilter';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,9 +16,6 @@ export default async function MyRsvpsPage({
         const attendeeName = session ? `${session.name} ${session.surname}` : '';
 
         return (
-            <>
-            <AutoRefresh />
-
             <div className="space-y-6">
                 <div>
                     <h1 className="text-2xl font-bold text-[var(--color-text)]">My RSVP&apos;s</h1>
@@ -29,11 +24,13 @@ export default async function MyRsvpsPage({
                     </p>
                 </div>
 
-                <MyRsvpList initialRsvps={rsvps} dateFilter={<RsvpDateFilter />} attendeeName={attendeeName} />
-                
+                <MyRsvpList
+                    initialRsvps={rsvps}
+                    initialDateFrom={searchParams.dateFrom ?? ''}
+                    initialDateTo={searchParams.dateTo ?? ''}
+                    attendeeName={attendeeName}
+                />
             </div>
-
-            </>
         );
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Onbekende fout het voorgekom';
