@@ -64,7 +64,7 @@ export default function EventPredictionPanel({ date, capacity, onApplyBudget }: 
                     <h2 className="text-base font-semibold text-[var(--color-text)]">KI-Voorspelling</h2>
                 </div>
                 <p className="text-sm text-[var(--color-text-subtle)]">
-                    Vul die datum en kapasiteit in om 'n voorspelling te sien.
+                    Vul die datum en kapasiteit in op die vorm om 'n voorspelling te sien.
                 </p>
             </div>
         );

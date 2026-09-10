@@ -77,8 +77,13 @@ export default async function EventDetailPage({ params }: { params: { id: string
                     <div className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                         <Calendar size={15} className="shrink-0" /> <span>{formatDate(event.date)}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
-                        <MapPin size={15} className="shrink-0" /> <span className="truncate">{event.location}</span>
+                    <div className="flex flex-col gap-0.5 text-sm text-[var(--color-text-subtle)] min-w-0">
+                        <div className="flex items-center gap-2">
+                            <MapPin size={15} className="shrink-0" /> <span className="truncate">{event.address || event.location}</span>
+                        </div>
+                        {event.address && event.location && (
+                            <span className="text-xs truncate pl-[23px]">{event.location}</span>
+                        )}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                         <Users size={15} className="shrink-0" /> <span>{event.confirmedAttendees} / {event.maxCapacity}</span>

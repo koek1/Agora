@@ -51,7 +51,7 @@ export default async function EditEventPage({ params }: { params: { id: string }
         : [];
 
     return (
-        <div className="max-w-5xl space-y-6">
+        <div className="max-w-7xl space-y-6">
             <Link
                 href={`/events/${event.id}`}
                 className="inline-flex items-center gap-1 text-sm text-[var(--color-text-subtle)] hover:text-[var(--color-primary)] transition-colors"
@@ -74,6 +74,10 @@ export default async function EditEventPage({ params }: { params: { id: string }
                     time,
                     endTime,
                     location: event.location,
+                    address: event.address,
+                    placeId: event.placeId,
+                    lat: event.lat,
+                    lon: event.lon,
                     type: event.type,
                     intendedAttendance: event.intendedAttendance,
                     capacity: String(event.maxCapacity),

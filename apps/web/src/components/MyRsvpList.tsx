@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, X, Loader2, Search } from 'lucide-react';
 import type { MyRsvp, RsvpStatus } from '@/lib/api/rsvp';
 import { formatDateLong } from '@/lib/format-date';
-import { cancelRsvpAction } from '@/lib/actions/rsvp.actions';
+import { cancelRsvpAction, getMyRsvpsAction } from '@/lib/actions/rsvp.actions';
 import RsvpQrButton from '@/components/RsvpQrButton';
 import { Pill } from '@/components/ui/Pill';
 import { RSVP_STATUS_LABEL, RSVP_STATUS_TONE } from '@/lib/rsvp-view';
+import DateRangePicker from '@/components/DateRangePicker';
 
 const FILTERS: { value: RsvpStatus | 'alles'; label: string }[] = [
     { value: 'alles', label: 'Alles' },
@@ -17,18 +18,59 @@ const FILTERS: { value: RsvpStatus | 'alles'; label: string }[] = [
     { value: 'GEKANSELLEER', label: 'Gekanselleer' },
 ];
 
-export default function MyRsvpList({ initialRsvps, dateFilter, attendeeName, }: { initialRsvps: MyRsvp[]; dateFilter?: React.ReactNode; attendeeName: string;  }) {
+interface MyRsvpListProps {
+    initialRsvps: MyRsvp[];
+    initialDateFrom: string;
+    initialDateTo: string;
+    attendeeName: string;
+}
+
+export default function MyRsvpList({ initialRsvps, initialDateFrom, initialDateTo, attendeeName }: MyRsvpListProps) {
     const [rsvps, setRsvps] = useState(initialRsvps);
+    const [dateFrom, setDateFrom] = useState(initialDateFrom);
+    const [dateTo, setDateTo] = useState(initialDateTo);
     const [filter, setFilter] = useState<RsvpStatus | 'alles'>('alles');
     const [confirmId, setConfirmId] = useState<string | null>(null);
     const [cancelingId, setCancelingId] = useState<string | null>(null);
     const [errorId, setErrorId] = useState<string | null>(null);
     const [highlightEventId, setHighlightEventId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
 
-    // Refresh
+    const rsvpsRequestId = useRef(0);
+    const didMountRef = useRef(false);
+
+    // Haal die RSVP-lys weer op sodra die datumreeks verander. Suiwer client-kant --
+    // geen router.push/navigasie betrokke nie, sodat die DateRangePicker se
+    // popover nooit toemaak tussen die eerste en tweede dag se klik nie
+    // (presies soos die Geleenthede-bladsy se datumfilter werk).
+    const loadRsvps = useCallback(async () => {
+        const requestId = ++rsvpsRequestId.current;
+        const result = await getMyRsvpsAction(dateFrom, dateTo);
+        if (requestId !== rsvpsRequestId.current) return;
+        if (result.rsvps) setRsvps(result.rsvps);
+    }, [dateFrom, dateTo]);
+
     useEffect(() => {
-        setRsvps(initialRsvps);
-    }, [initialRsvps]);
+        if (!didMountRef.current) {
+            didMountRef.current = true;
+            return;
+        }
+        loadRsvps();
+    }, [loadRsvps]);
+
+    // 'n Ref sodat die 60s-opname hieronder altyd die jongste datumfilter gebruik,
+    // sonder dat 'n filterklik die opname self herbegin.
+    const loadRsvpsRef = useRef(loadRsvps);
+    useEffect(() => {
+        loadRsvpsRef.current = loadRsvps;
+    }, [loadRsvps]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            loadRsvpsRef.current();
+        }, 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -49,9 +91,6 @@ export default function MyRsvpList({ initialRsvps, dateFilter, attendeeName, }: 
 
     // Alles wys "Bevestig en Hangende"
     // Alle gekanseleerde RSVP's slegs in Gekanseleerde bladsy
-
-    const [search, setSearch] = useState('');
-
 
     const filtered = (
         filter === 'alles'
@@ -75,7 +114,7 @@ export default function MyRsvpList({ initialRsvps, dateFilter, attendeeName, }: 
         setCancelingId(null);
     }
 
-    if (rsvps.length === 0) {
+    if (rsvps.length === 0 && !dateFrom && !search) {
         return (
             <p className="text-sm text-[var(--color-text-subtle)] text-center py-12">
                 Jy het nog nie vir enige geleentheid ingeteken nie.
@@ -113,7 +152,11 @@ export default function MyRsvpList({ initialRsvps, dateFilter, attendeeName, }: 
                         className="bg-transparent text-xs text-[var(--color-text)] placeholder:text-[var(--color-text-subtle)] outline-none w-full"
                     />
                 </div>
-                {dateFilter}
+                <DateRangePicker
+                    from={dateFrom}
+                    to={dateTo}
+                    onChange={(nextFrom, nextTo) => { setDateFrom(nextFrom); setDateTo(nextTo); }}
+                />
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -187,6 +230,11 @@ export default function MyRsvpList({ initialRsvps, dateFilter, attendeeName, }: 
                                             <MapPin size={13} className="shrink-0" />
                                             <span className="truncate">{r.event.location}</span>
                                         </div>
+                                        {r.event.address && (
+                                            <div className="flex items-center gap-2 text-xs text-[var(--color-text-subtle)] pl-5">
+                                                {r.event.address}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -202,6 +250,12 @@ export default function MyRsvpList({ initialRsvps, dateFilter, attendeeName, }: 
                                         eventTitle={r.event?.title ?? 'Geleentheid'}
                                         eventDate={r.event ? formatDateLong(r.event.date) : ''}
                                         eventLocation={r.event?.location ?? ''}
+                                        eventAddress={r.event?.address ?? ''}
+                                        mapsUrl={
+                                            r.event?.lat != null && r.event?.lon != null
+                                                ? `https://www.google.com/maps/search/?api=1&query=${r.event.lat},${r.event.lon}`
+                                                : null
+                                        }
                                         attendeeName={attendeeName}
                                         disabled={isCancelled}
                                     />

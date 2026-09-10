@@ -47,6 +47,24 @@ export class UpdateEventDto {
     location?: string;
 
     @IsOptional()
+    @IsString()
+    @IsNotEmpty()
+    @MaxLength(200)
+    address?: string;
+
+    @IsOptional()
+    @IsString()
+    placeId?: string;
+
+    @IsOptional()
+    @IsNumber()
+    lat?: number;
+
+    @IsOptional()
+    @IsNumber()
+    lon?: number;
+
+    @IsOptional()
     @IsInt()
     @Min(1)
     maxCapacity?: number;

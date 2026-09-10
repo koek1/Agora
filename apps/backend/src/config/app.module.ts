@@ -11,9 +11,11 @@ import { MessagingModule } from '../messaging/messaging.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuditModule } from '../audit/audit.module';
 import { EventsModule } from '../events/events.module';
+import { PlacesModule } from '../places/places.module';
 import { RsvpModule } from '../rsvp/rsvp.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { EventPlannerModule } from '../event-planner/event-planner.module';
 import { PhotographersModule } from '../photographers/photographers.module';
 import { ExportModule } from '../export/export.module';
 import { CalendarModule } from '../calendar/calendar.module';
@@ -68,9 +70,11 @@ import { HealthModule } from '../health/health.module';
     NotificationsModule,
     AuditModule,
     EventsModule,
+    PlacesModule,
     RsvpModule,
     PaymentsModule,
     AnalyticsModule,
+    EventPlannerModule,
     PhotographersModule,
     ExportModule,
     CalendarModule,

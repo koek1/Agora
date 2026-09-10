@@ -89,7 +89,7 @@ export class GoogleCalendarService {
             body: JSON.stringify({
                 summary: event.title,
                 description: event.description,
-                location: event.location,
+                location: event.address || event.location,
                 start: { dateTime: start.toISOString() },
                 end: { dateTime: end.toISOString() },
             }),

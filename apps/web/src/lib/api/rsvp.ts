@@ -27,6 +27,9 @@ export interface MyRsvpEvent {
     date:                string;
     endDate?:             string;
     location:            string;
+    address:             string;
+    lat:                 number | null;
+    lon:                 number | null;
     maxCapacity:         number;
     confirmedAttendees:  number;
     type:                string;

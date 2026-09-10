@@ -39,7 +39,10 @@ export interface AppConfig {
         notifyUrl: string;
         publicBaseUrl: string;
         processUrl: string;
-    }
+    };
+    geoapify: {
+        apiKey: string;
+    };
 }
 
 export default (): AppConfig => {
@@ -90,6 +93,9 @@ export default (): AppConfig => {
             // terug na die web-frontend of na die mobiele app se eie skema moet herlei.
             publicBaseUrl: process.env.PAYFAST_PUBLIC_BASE_URL ?? 'http://localhost:3000/api/v1/payments',
             processUrl: process.env.PAYFAST_PROCESS_URL ?? 'https://sandbox.payfast.co.za/eng/process',
+        },
+        geoapify: {
+            apiKey: process.env.GEOAPIFY_API_KEY ?? 'not-configured',
         },
     };
 };
