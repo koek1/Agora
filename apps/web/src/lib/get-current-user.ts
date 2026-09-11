@@ -18,6 +18,7 @@ export function getCurrentUser(): MockUser {
         role: (session.role as MockUser['role']) ?? 'GAS',
         studyCenter: session.studyCenter ?? 'Onbekend',
         isActive: session.isActive ?? true,
+        title: session.title ?? '',
         tags: (session.tags as MockUser['tags']) ?? [],
     };
 }

@@ -23,6 +23,8 @@ export function getTagLabel(tag: UserTag): string {
 }
 
 export interface UpdateUserDto {
+    name?: string;
+    surname?: string;
     title?: UserTitle;
     tags?: UserTag[];
 }

@@ -15,6 +15,7 @@ import { getPrediction, type PredictionResult } from '../api/analytics';
 import { getEventStatus, formatFullDate, formatEventTime, formatEventDate } from '../lib/event-status';
 import { takeEventsPrefetch, takeMyRsvpsPrefetch, takePredictionPrefetch } from '../lib/prefetch';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { ProfileModal } from '../components/ProfileModal';
 import { typography } from '../theme/typography';
 
 export function DashboardScreen() {
@@ -24,6 +25,7 @@ export function DashboardScreen() {
   const colors = useThemeColors();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const [aiInfoOpen, setAiInfoOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const [events, setEvents] = useState<EventResponse[]>([]);
   const [myRsvps, setMyRsvps] = useState<RsvpWithEvent[]>([]);
@@ -124,6 +126,15 @@ export function DashboardScreen() {
         subtitle={`${roleLabel}${user.studyCenter ? ` • ${user.studyCenter}` : ''}`}
         right={
           <>
+            <TouchableOpacity
+              style={styles.avatarBtn}
+              onPress={() => setProfileOpen(true)}
+              accessibilityLabel="My profiel"
+            >
+              <Text style={styles.avatarBtnText}>
+                {`${user.name.charAt(0)}${user.surname.charAt(0)}`.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Settings')}>
               <Feather name="settings" size={18} color={colors.text} />
             </TouchableOpacity>
@@ -311,6 +322,11 @@ export function DashboardScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ProfileModal
+        visible={profileOpen}
+        onClose={() => setProfileOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -394,6 +410,15 @@ function makeStyles(colors: ReturnType<typeof useThemeColors>) {
     safe: { flex: 1, backgroundColor: colors.background },
     scroll: { paddingHorizontal: 16, paddingBottom: 24 },
 
+    avatarBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 999,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarBtnText: { color: colors.primaryText, fontSize: 13, fontWeight: '900' },
     iconBtn: {
       width: 36,
       height: 36,

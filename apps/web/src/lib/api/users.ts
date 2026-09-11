@@ -31,8 +31,10 @@ export interface UserResponseDto {
 
 // Mirror backend: UpdateUserDto
 export interface UpdateUserDto {
-    title?: UserTitle;
-    tags?:  UserTag[];
+    name?:    string;
+    surname?: string;
+    title?:   UserTitle;
+    tags?:    UserTag[];
 }
 
 export async function updateUser(id: string, payload: UpdateUserDto, token?: string): Promise<UserResponseDto> {

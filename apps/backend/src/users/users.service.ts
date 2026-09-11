@@ -72,7 +72,12 @@ export class UsersService {
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
-    const updated = await this.userModel.findByIdAndUpdate(id, { $set: updateUserDto }, { new: true }).exec();
+    // runValidators dwing die skema se eie reels (bv. name is required) ook op 'n
+    // update af, Mongoose slaan dit andersins oor, sodat 'n veld wat verby die
+    // DTO glip stilweg leeg geskryf sou word in plaas van hard te faal.
+    const updated = await this.userModel
+      .findByIdAndUpdate(id, { $set: updateUserDto }, { new: true, runValidators: true })
+      .exec();
     if (!updated) throw new NotFoundException(`User ${id} not found`);
     return UserResponseDto.fromDocument(updated);
   }
