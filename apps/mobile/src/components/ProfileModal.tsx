@@ -43,7 +43,7 @@ export function ProfileModal({ visible, onClose }: Props) {
                 >
                     <Pressable style={styles.card} onPress={() => {}}>
                         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                            <ProfilePanel onPhaseChange={setPhase} />
+                            { visible && <ProfilePanel onPhaseChange={setPhase} />}
                         </ScrollView>
 
                         {dismissable && (
